@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= typeof pageTitle !== 'undefined' ? pageTitle + ' - Clínica Pierro' : 'Clínica Pierro - Gestão Ocupacional' %></title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">try{
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "surface-container": "#ecedf6", "on-tertiary-container": "#ffcfb9", "secondary": "#585f66",
+          "on-tertiary": "#ffffff", "surface-tint": "#005db6", "primary-fixed": "#d6e3ff",
+          "surface-bright": "#f9f9ff", "tertiary": "#793100", "inverse-surface": "#2e3037",
+          "tertiary-fixed": "#ffdbcb", "on-secondary-fixed": "#151c22", "on-secondary-fixed-variant": "#40484e",
+          "on-error": "#ffffff", "error": "#ba1a1a", "on-surface": "#191c21", "primary-container": "#005eb8",
+          "border-subtle": "#DEE2E6", "tertiary-container": "#9f4300", "secondary-fixed": "#dce3eb",
+          "on-surface-variant": "#424752", "on-primary-fixed-variant": "#00468c", "outline": "#727783",
+          "secondary-container": "#dce3eb", "error-container": "#ffdad6", "on-primary-fixed": "#001b3d",
+          "primary-fixed-dim": "#a9c7ff", "status-ergonomic": "#188038", "on-tertiary-fixed-variant": "#793100",
+          "tertiary-fixed-dim": "#ffb691", "surface-container-low": "#f2f3fb", "on-tertiary-fixed": "#341100",
+          "surface-container-highest": "#e1e2ea", "on-secondary": "#ffffff", "status-physical": "#1A73E8",
+          "on-secondary-container": "#5e656c", "inverse-on-surface": "#eff0f8", "on-primary-container": "#c8daff",
+          "inverse-primary": "#a9c7ff", "outline-variant": "#c2c6d4", "status-biological": "#D93025",
+          "surface-container-high": "#e7e8f0", "surface": "#f9f9ff", "background": "#f9f9ff",
+          "status-chemical": "#F9AB00", "status-accident": "#7030A0", "on-background": "#191c21",
+          "on-error-container": "#93000a", "surface-variant": "#e1e2ea", "primary": "#00478d",
+          "on-primary": "#ffffff", "surface-dim": "#d8dae2", "background-main": "#F8F9FA",
+          "surface-container-lowest": "#ffffff", "secondary-fixed-dim": "#c0c7cf"
+        },
+        borderRadius: { DEFAULT: "0.125rem", lg: "0.25rem", xl: "0.5rem", full: "0.75rem" },
+        spacing: { "stack-sm": "0.5rem", "stack-md": "1rem", "sidebar-width": "260px", "gutter": "1.5rem", "stack-lg": "2rem", "container-max": "1440px" },
+        fontFamily: { "body-lg": ["Inter"], "table-data": ["Inter"], "headline-md": ["Inter"], "body-md": ["Inter"], "headline-lg-mobile": ["Inter"], "label-caps": ["Inter"], "headline-lg": ["Inter"] },
+        fontSize: {
+          "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+          "table-data": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+          "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+          "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+          "headline-lg-mobile": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+          "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+          "headline-lg": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+        }
+      }
+    }
+  }
+}catch(_e){}</script>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; font-size: 20px; vertical-align: middle; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #c2c6d4; border-radius: 4px; }
+  .modal-backdrop { background: rgba(25, 28, 33, 0.5); }
+  [x-cloak] { display: none !important; }
+</style>
+<script>
+// ---- Helpers compartilhados (carregados antes de qualquer script de página) ----
+async function api(url, options = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+    ...options
+  });
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* sem corpo */ }
+  if (!res.ok) {
+    const msg = (data && data.erro) ? data.erro : `Erro na requisição (${res.status})`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+function toast(mensagem, tipo = 'sucesso') {
+  const container = document.getElementById('toast-container');
+  if (!container) return alert(mensagem);
+  const bg = tipo === 'erro' ? 'bg-error text-white' : 'bg-primary text-white';
+  const el = document.createElement('div');
+  el.className = `${bg} px-4 py-3 rounded-lg shadow-lg font-body-md text-body-md max-w-sm`;
+  el.textContent = mensagem;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function confirmarExclusao(mensagem) {
+  return window.confirm(mensagem || 'Tem certeza que deseja excluir este registro?');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function onlyDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function formatCpf(value) {
+  const d = onlyDigits(value).slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return d.slice(0, 3) + '.' + d.slice(3);
+  if (d.length <= 9) return d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6);
+  return d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d.slice(9);
+}
+
+function isValidCpf(value) {
+  const cpf = onlyDigits(value);
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += Number(cpf[i]) * (10 - i);
+  let rest = (sum * 10) % 11;
+  if (rest === 10) rest = 0;
+  if (rest !== Number(cpf[9])) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += Number(cpf[i]) * (11 - i);
+  rest = (sum * 10) % 11;
+  if (rest === 10) rest = 0;
+  return rest === Number(cpf[10]);
+}
+
+function bindCpfMask(input) {
+  if (!input) return;
+  input.setAttribute('inputmode', 'numeric');
+  input.setAttribute('maxlength', '14');
+  input.setAttribute('autocomplete', 'off');
+  input.addEventListener('input', () => {
+    const start = input.selectionStart;
+    const before = input.value.length;
+    input.value = formatCpf(input.value);
+    const after = input.value.length;
+    if (typeof start === 'number') {
+      const next = Math.max(0, start + (after - before));
+      try { input.setSelectionRange(next, next); } catch (_) {}
+    }
+  });
+}
+
+async function downloadPdfFromResponse(res, fallbackName = 'ASO.pdf') {
+  if (!res.ok) {
+    let data = null;
+    try { data = await res.json(); } catch (_) {}
+    throw new Error((data && data.erro) || `Erro na requisição (${res.status})`);
+  }
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  const filename = match ? match[1] : fallbackName;
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+</script>
+</head>

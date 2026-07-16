@@ -1,0 +1,72 @@
+<% const pageTitle = 'Dashboard'; %>
+<%- include('partials/head', {pageTitle}) %>
+<%- include('partials/nav', {pageTitle, active: 'dashboard'}) %>
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-stack-md mb-stack-lg">
+  <div class="bg-surface border border-border-subtle rounded-xl p-6">
+    <p class="text-on-surface-variant text-body-md">Setores cadastrados</p>
+    <p id="stat-setores" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
+  </div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-6">
+    <p class="text-on-surface-variant text-body-md">Cargos cadastrados</p>
+    <p id="stat-cargos" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
+  </div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-6">
+    <p class="text-on-surface-variant text-body-md">Riscos cadastrados</p>
+    <p id="stat-riscos" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
+  </div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-6">
+    <p class="text-on-surface-variant text-body-md">ASOs gerados este mês</p>
+    <p id="stat-mes" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
+  </div>
+</div>
+
+<div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-border-subtle flex justify-between items-center">
+    <h3 class="font-headline-md text-headline-md">Últimos ASOs gerados</h3>
+    <a href="/historico" class="text-primary font-body-md text-body-md font-semibold">Ver histórico completo →</a>
+  </div>
+  <table class="w-full text-left border-collapse">
+    <thead class="bg-background-main border-b border-border-subtle">
+      <tr>
+        <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase">Nome</th>
+        <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase">Cargo</th>
+        <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase">Setor</th>
+        <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase">Data</th>
+      </tr>
+    </thead>
+    <tbody id="tbody-ultimos" class="divide-y divide-border-subtle">
+      <tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+async function carregarDashboard() {
+  try {
+    const stats = await api('/api/dashboard/stats');
+    document.getElementById('stat-setores').textContent = stats.totalSetores;
+    document.getElementById('stat-cargos').textContent = stats.totalCargos;
+    document.getElementById('stat-riscos').textContent = stats.totalRiscos;
+    document.getElementById('stat-mes').textContent = stats.geradosNoMes;
+
+    const tbody = document.getElementById('tbody-ultimos');
+    if (!stats.ultimosGerados.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Nenhum ASO gerado ainda.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = stats.ultimosGerados.map(h => `
+      <tr class="hover:bg-[#EBF2FA]">
+        <td class="px-6 py-3 font-semibold">${h.Nome}</td>
+        <td class="px-6 py-3">${h.Cargo}</td>
+        <td class="px-6 py-3">${h.Setor}</td>
+        <td class="px-6 py-3 text-on-surface-variant">${h.DataGeracao}</td>
+      </tr>`).join('');
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+carregarDashboard();
+</script>
+
+<%- include('partials/foot') %>

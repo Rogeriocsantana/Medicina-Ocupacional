@@ -1,0 +1,109 @@
+<% const pageTitle = 'Relacionamento Cargo x Riscos'; %>
+<%- include('partials/head', {pageTitle}) %>
+<%- include('partials/nav', {pageTitle, active: 'relacionamento'}) %>
+
+<div class="mb-stack-lg">
+  <h3 class="font-headline-lg text-headline-lg text-on-surface">Relacionamento Cargo × Riscos</h3>
+  <p class="text-on-surface-variant font-body-md text-body-md mt-1">Selecione um cargo e associe os riscos ocupacionais correspondentes.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-stack-md">
+  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden md:col-span-1">
+    <div class="px-4 py-3 border-b border-border-subtle bg-background-main">
+      <h4 class="font-headline-md text-headline-md text-on-surface" style="font-size:16px">Cargos</h4>
+    </div>
+    <div id="lista-cargos" class="divide-y divide-border-subtle max-h-[70vh] overflow-y-auto">
+      <div class="px-4 py-4 text-on-surface-variant">Carregando...</div>
+    </div>
+  </div>
+
+  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden md:col-span-2">
+    <div class="px-6 py-4 border-b border-border-subtle bg-background-main flex justify-between items-center">
+      <h4 id="titulo-cargo-selecionado" class="font-headline-md text-headline-md text-on-surface" style="font-size:16px">Selecione um cargo à esquerda</h4>
+      <button id="btn-salvar" onclick="salvarRelacionamento()" disabled class="bg-primary text-white px-5 py-2 rounded-lg font-bold disabled:opacity-40 flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">save</span> Salvar Vínculos
+      </button>
+    </div>
+    <div id="grupos-riscos" class="p-6 space-y-6">
+      <p class="text-on-surface-variant">Nenhum cargo selecionado.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const ORDEM_GRUPOS = ['Biológico', 'Físico', 'Químico', 'Ergonômico', 'Acidente'];
+let cargoSelecionadoId = null;
+let todosRiscos = [];
+
+async function carregarCargos() {
+  const el = document.getElementById('lista-cargos');
+  try {
+    const resumo = await api('/api/cargo-risco/resumo');
+    if (!resumo.length) {
+      el.innerHTML = '<div class="px-4 py-4 text-on-surface-variant">Nenhum cargo cadastrado.</div>';
+      return;
+    }
+    el.innerHTML = resumo.map(c => `
+      <button onclick="selecionarCargo(${c.ID}, '${c.Nome.replace(/'/g, "\\'")}')" id="cargo-item-${c.ID}"
+        class="w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex justify-between items-center">
+        <span class="font-body-md">${c.Nome}</span>
+        <span class="text-xs px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant">${c.totalRiscos} risco(s)</span>
+      </button>`).join('');
+  } catch (err) {
+    el.innerHTML = `<div class="px-4 py-4 text-error">${err.message}</div>`;
+  }
+}
+
+async function selecionarCargo(id, nome) {
+  cargoSelecionadoId = id;
+  document.querySelectorAll('[id^="cargo-item-"]').forEach(b => b.classList.remove('bg-secondary-container', 'font-bold'));
+  const item = document.getElementById(`cargo-item-${id}`);
+  if (item) item.classList.add('bg-secondary-container', 'font-bold');
+
+  document.getElementById('titulo-cargo-selecionado').textContent = `Riscos para: ${nome}`;
+  document.getElementById('btn-salvar').disabled = false;
+
+  const grupos = document.getElementById('grupos-riscos');
+  grupos.innerHTML = '<p class="text-on-surface-variant">Carregando riscos...</p>';
+
+  try {
+    if (!todosRiscos.length) todosRiscos = await api('/api/riscos');
+    const vinculo = await api(`/api/cargo-risco/${id}`);
+    const selecionados = new Set(vinculo.riscoIds.map(String));
+
+    grupos.innerHTML = ORDEM_GRUPOS.map(grupo => {
+      const doGrupo = todosRiscos.filter(r => r.Grupo === grupo);
+      if (!doGrupo.length) return '';
+      return `
+        <div>
+          <h5 class="font-bold text-body-md mb-2 text-on-surface">${grupo}</h5>
+          <div class="space-y-2">
+            ${doGrupo.map(r => `
+              <label class="flex items-start gap-3 p-3 border border-border-subtle rounded-lg hover:bg-surface-container-low cursor-pointer">
+                <input type="checkbox" value="${r.ID}" class="chk-risco mt-1" ${selecionados.has(String(r.ID)) ? 'checked' : ''}>
+                <span class="text-body-md">${r.Descricao}</span>
+              </label>`).join('')}
+          </div>
+        </div>`;
+    }).join('') || '<p class="text-on-surface-variant">Nenhum risco cadastrado ainda. Cadastre riscos primeiro.</p>';
+  } catch (err) {
+    grupos.innerHTML = `<p class="text-error">${err.message}</p>`;
+  }
+}
+
+async function salvarRelacionamento() {
+  if (!cargoSelecionadoId) return;
+  const riscoIds = Array.from(document.querySelectorAll('.chk-risco:checked')).map(c => Number(c.value));
+  try {
+    await api('/api/cargo-risco', { method: 'POST', body: JSON.stringify({ cargoId: cargoSelecionadoId, riscoIds }) });
+    toast('Vínculos salvos com sucesso.');
+    carregarCargos();
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+carregarCargos();
+</script>
+
+<%- include('partials/foot') %>

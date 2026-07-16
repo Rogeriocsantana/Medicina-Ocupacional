@@ -1,0 +1,149 @@
+<% const pageTitle = 'Cadastro de Riscos'; %>
+<%- include('partials/head', {pageTitle}) %>
+<%- include('partials/nav', {pageTitle, active: 'riscos'}) %>
+
+<div class="flex justify-between items-end mb-stack-lg">
+  <div>
+    <h3 class="font-headline-lg text-headline-lg text-on-surface">Lista de Riscos Ocupacionais</h3>
+    <p class="text-on-surface-variant font-body-md text-body-md mt-1">Cadastre os riscos por grupo (Biológico, Físico, Químico, Ergonômico, Acidente).</p>
+  </div>
+  <button class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm" onclick="abrirModal()">
+    <span class="material-symbols-outlined">add</span> Adicionar Risco
+  </button>
+</div>
+
+<div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+  <table class="w-full text-left border-collapse">
+    <thead class="bg-background-main border-b border-border-subtle">
+      <tr>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">ID</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Grupo</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Descrição</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase text-right">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="tbody-riscos" class="divide-y divide-border-subtle">
+      <tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
+  <div class="bg-surface rounded-xl w-full max-w-lg p-6">
+    <h3 id="modal-titulo" class="font-headline-md text-headline-md mb-4">Adicionar Risco</h3>
+    <form id="form-risco" class="space-y-4">
+      <input type="hidden" id="risco-id">
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Grupo</label>
+        <select id="risco-grupo" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+          <option value="">Selecione...</option>
+          <option value="Biológico">Biológico</option>
+          <option value="Físico">Físico</option>
+          <option value="Químico">Químico</option>
+          <option value="Ergonômico">Ergonômico</option>
+          <option value="Acidente">Acidente</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Descrição</label>
+        <textarea id="risco-descricao" required rows="4" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary" placeholder="Ex: Trabalhos e operações em contato permanente com pacientes..."></textarea>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" onclick="fecharModal()" class="px-5 py-2.5 rounded-lg font-semibold text-on-surface-variant hover:bg-surface-container-low">Cancelar</button>
+        <button type="submit" class="px-5 py-2.5 rounded-lg font-bold bg-primary text-white hover:opacity-90">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const CORES_GRUPO = {
+  'Biológico': 'bg-status-biological text-white',
+  'Físico': 'bg-status-physical text-white',
+  'Químico': 'bg-status-chemical text-white',
+  'Ergonômico': 'bg-status-ergonomic text-white',
+  'Acidente': 'bg-status-accident text-white'
+};
+
+async function carregarRiscos() {
+  const tbody = document.getElementById('tbody-riscos');
+  try {
+    const riscos = await api('/api/riscos');
+    if (!riscos.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Nenhum risco cadastrado.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = riscos.map(r => `
+      <tr class="hover:bg-[#EBF2FA] transition-colors group">
+        <td class="px-6 py-4 font-table-data text-table-data text-on-surface-variant">#${String(r.ID).padStart(3,'0')}</td>
+        <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs font-bold ${CORES_GRUPO[r.Grupo] || 'bg-surface-container-high'}">${r.Grupo}</span></td>
+        <td class="px-6 py-4 text-body-md max-w-xl">${r.Descricao}</td>
+        <td class="px-6 py-4 text-right">
+          <div class="flex justify-end gap-2 opacity-60 group-hover:opacity-100">
+            <button onclick='editar(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="p-2 text-primary hover:bg-primary-fixed rounded"><span class="material-symbols-outlined">edit</span></button>
+            <button onclick="excluir(${r.ID})" class="p-2 text-error hover:bg-error-container rounded"><span class="material-symbols-outlined">delete</span></button>
+          </div>
+        </td>
+      </tr>`).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-error">${err.message}</td></tr>`;
+  }
+}
+
+function abrirModal() {
+  document.getElementById('modal-titulo').textContent = 'Adicionar Risco';
+  document.getElementById('risco-id').value = '';
+  document.getElementById('risco-grupo').value = '';
+  document.getElementById('risco-descricao').value = '';
+  document.getElementById('modal').classList.remove('hidden');
+  document.getElementById('modal').classList.add('flex');
+}
+function fecharModal() {
+  document.getElementById('modal').classList.add('hidden');
+  document.getElementById('modal').classList.remove('flex');
+}
+function editar(risco) {
+  document.getElementById('modal-titulo').textContent = 'Editar Risco';
+  document.getElementById('risco-id').value = risco.ID;
+  document.getElementById('risco-grupo').value = risco.Grupo;
+  document.getElementById('risco-descricao').value = risco.Descricao;
+  document.getElementById('modal').classList.remove('hidden');
+  document.getElementById('modal').classList.add('flex');
+}
+
+document.getElementById('form-risco').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('risco-id').value;
+  const Grupo = document.getElementById('risco-grupo').value;
+  const Descricao = document.getElementById('risco-descricao').value.trim();
+  if (!Grupo || !Descricao) return;
+  try {
+    if (id) {
+      await api(`/api/riscos/${id}`, { method: 'PUT', body: JSON.stringify({ Grupo, Descricao }) });
+      toast('Risco atualizado com sucesso.');
+    } else {
+      await api('/api/riscos', { method: 'POST', body: JSON.stringify({ Grupo, Descricao }) });
+      toast('Risco adicionado com sucesso.');
+    }
+    fecharModal();
+    carregarRiscos();
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+});
+
+async function excluir(id) {
+  if (!confirmarExclusao('Excluir este risco? Ele será removido de todos os cargos relacionados.')) return;
+  try {
+    await api(`/api/riscos/${id}`, { method: 'DELETE' });
+    toast('Risco excluído.');
+    carregarRiscos();
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+carregarRiscos();
+</script>
+
+<%- include('partials/foot') %>

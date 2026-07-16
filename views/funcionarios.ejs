@@ -1,0 +1,233 @@
+<% const pageTitle = 'Cadastro de Funcionários'; %>
+<%- include('partials/head', {pageTitle}) %>
+<%- include('partials/nav', {pageTitle, active: 'funcionarios'}) %>
+
+<div class="flex justify-between items-end mb-stack-lg">
+  <div>
+    <h3 class="font-headline-lg text-headline-lg text-on-surface">Funcionários</h3>
+    <p class="text-on-surface-variant font-body-md text-body-md mt-1">Cadastre colaboradores para buscar na geração de ASO sem digitar manualmente.</p>
+  </div>
+  <button class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm" onclick="abrirModal()">
+    <span class="material-symbols-outlined">person_add</span> Adicionar Funcionário
+  </button>
+</div>
+
+<div class="mb-4 relative max-w-md">
+  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+  <input id="busca" type="text" placeholder="Buscar por nome ou CPF..." class="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary text-body-md">
+</div>
+
+<div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+  <table class="w-full text-left border-collapse">
+    <thead class="bg-background-main border-b border-border-subtle">
+      <tr>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Nome</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">CPF</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Nascimento</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Setor</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Cargo</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase text-right">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="tbody-funcionarios" class="divide-y divide-border-subtle">
+      <tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
+  <div class="bg-surface rounded-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+    <h3 id="modal-titulo" class="font-headline-md text-headline-md mb-4">Adicionar Funcionário</h3>
+    <form id="form-funcionario" class="space-y-4">
+      <input type="hidden" id="func-id">
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Nome completo</label>
+        <input id="func-nome" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-body-md font-semibold mb-1">CPF</label>
+          <input id="func-cpf" required placeholder="000.000.000-00" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+          <p id="func-cpf-erro" class="text-error text-body-md mt-1 hidden">CPF inválido.</p>
+        </div>
+        <div>
+          <label class="block text-body-md font-semibold mb-1">Data de nascimento</label>
+          <input id="func-nascimento" type="date" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-body-md font-semibold mb-1">Setor</label>
+          <select id="func-setor" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+            <option value="">Carregando...</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-body-md font-semibold mb-1">Cargo</label>
+          <select id="func-cargo" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+            <option value="">Carregando...</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" onclick="fecharModal()" class="px-5 py-2.5 rounded-lg font-semibold text-on-surface-variant hover:bg-surface-container-low">Cancelar</button>
+        <button type="submit" class="px-5 py-2.5 rounded-lg font-bold bg-primary text-white hover:opacity-90">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let setoresCache = [];
+let cargosCache = [];
+
+bindCpfMask(document.getElementById('func-cpf'));
+
+function formatDateBR(iso) {
+  if (!iso) return '';
+  const [y, m, d] = String(iso).slice(0, 10).split('-');
+  return d && m && y ? `${d}/${m}/${y}` : iso;
+}
+
+async function carregarSelectsModal() {
+  [setoresCache, cargosCache] = await Promise.all([
+    api('/api/setores'),
+    api('/api/cargos')
+  ]);
+  document.getElementById('func-setor').innerHTML = '<option value="">Selecione...</option>' +
+    setoresCache.map(s => `<option value="${s.ID}">${escapeHtml(s.Nome)}</option>`).join('');
+  document.getElementById('func-cargo').innerHTML = '<option value="">Selecione...</option>' +
+    cargosCache.map(c => `<option value="${c.ID}">${escapeHtml(c.Nome)}</option>`).join('');
+}
+
+async function carregarFuncionarios(busca = '') {
+  const tbody = document.getElementById('tbody-funcionarios');
+  try {
+    const rows = await api(`/api/funcionarios?busca=${encodeURIComponent(busca)}`);
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Nenhum funcionário encontrado.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(f => `
+      <tr class="hover:bg-[#EBF2FA] transition-colors group">
+        <td class="px-6 py-4 font-semibold">${escapeHtml(f.Nome)}</td>
+        <td class="px-6 py-4 font-table-data text-table-data">${escapeHtml(f.CPF)}</td>
+        <td class="px-6 py-4">${escapeHtml(formatDateBR(f.DataNascimento))}</td>
+        <td class="px-6 py-4">${escapeHtml(f.SetorNome || '')}</td>
+        <td class="px-6 py-4">${escapeHtml(f.CargoNome || '')}</td>
+        <td class="px-6 py-4 text-right">
+          <div class="flex justify-end gap-2 opacity-60 group-hover:opacity-100">
+            <button onclick='editar(${JSON.stringify(f).replace(/'/g, "&#39;")})' class="p-2 text-primary hover:bg-primary-fixed rounded" title="Editar"><span class="material-symbols-outlined">edit</span></button>
+            <button onclick="excluir(${f.ID})" class="p-2 text-error hover:bg-error-container rounded" title="Excluir"><span class="material-symbols-outlined">delete</span></button>
+          </div>
+        </td>
+      </tr>`).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-error">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function abrirModal() {
+  document.getElementById('modal-titulo').textContent = 'Adicionar Funcionário';
+  document.getElementById('func-id').value = '';
+  document.getElementById('form-funcionario').reset();
+  document.getElementById('func-cpf-erro').classList.add('hidden');
+  document.getElementById('modal').classList.remove('hidden');
+  document.getElementById('modal').classList.add('flex');
+}
+
+function fecharModal() {
+  document.getElementById('modal').classList.add('hidden');
+  document.getElementById('modal').classList.remove('flex');
+}
+
+function editar(func) {
+  document.getElementById('modal-titulo').textContent = 'Editar Funcionário';
+  document.getElementById('func-id').value = func.ID;
+  document.getElementById('func-nome').value = func.Nome || '';
+  document.getElementById('func-cpf').value = formatCpf(func.CPF || '');
+  document.getElementById('func-nascimento').value = func.DataNascimento || '';
+  document.getElementById('func-setor').value = func.SetorID || '';
+  document.getElementById('func-cargo').value = func.CargoID || '';
+  document.getElementById('func-cpf-erro').classList.add('hidden');
+  document.getElementById('modal').classList.remove('hidden');
+  document.getElementById('modal').classList.add('flex');
+}
+
+document.getElementById('form-funcionario').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const cpfEl = document.getElementById('func-cpf');
+  cpfEl.value = formatCpf(cpfEl.value);
+  if (!isValidCpf(cpfEl.value)) {
+    document.getElementById('func-cpf-erro').classList.remove('hidden');
+    cpfEl.focus();
+    return;
+  }
+  document.getElementById('func-cpf-erro').classList.add('hidden');
+
+  const payload = {
+    Nome: document.getElementById('func-nome').value.trim(),
+    CPF: cpfEl.value,
+    DataNascimento: document.getElementById('func-nascimento').value,
+    SetorID: document.getElementById('func-setor').value,
+    CargoID: document.getElementById('func-cargo').value
+  };
+
+  const id = document.getElementById('func-id').value;
+  try {
+    if (id) {
+      await api(`/api/funcionarios/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+      toast('Funcionário atualizado.');
+    } else {
+      await api('/api/funcionarios', { method: 'POST', body: JSON.stringify(payload) });
+      toast('Funcionário cadastrado.');
+    }
+    fecharModal();
+    carregarFuncionarios(document.getElementById('busca').value);
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+});
+
+async function excluir(id) {
+  if (!confirmarExclusao('Excluir este funcionário?')) return;
+  try {
+    await api(`/api/funcionarios/${id}`, { method: 'DELETE' });
+    toast('Funcionário excluído.');
+    carregarFuncionarios(document.getElementById('busca').value);
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+let debounceTimer;
+document.getElementById('busca').addEventListener('input', (e) => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => carregarFuncionarios(e.target.value), 300);
+});
+
+async function abrirEdicaoPorId(id) {
+  try {
+    const func = await api(`/api/funcionarios/${encodeURIComponent(id)}`);
+    editar(func);
+    document.getElementById('func-nome').focus();
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+(async function init() {
+  await carregarSelectsModal();
+  carregarFuncionarios();
+
+  // Veio da tela de Gerar PDF com um funcionário selecionado: /funcionarios?editar=ID
+  const params = new URLSearchParams(window.location.search);
+  const editarId = params.get('editar') || params.get('id');
+  if (editarId) {
+    window.history.replaceState({}, '', '/funcionarios');
+    await abrirEdicaoPorId(editarId);
+  }
+})();
+</script>
+
+<%- include('partials/foot') %>

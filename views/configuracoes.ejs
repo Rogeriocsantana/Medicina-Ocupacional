@@ -1,0 +1,304 @@
+<% const pageTitle = 'Configurações'; %>
+<%- include('partials/head', {pageTitle}) %>
+<%- include('partials/nav', {pageTitle, active: 'configuracoes'}) %>
+
+<div class="mb-stack-lg">
+  <h3 class="font-headline-lg text-headline-lg text-on-surface">Configurações do ASO</h3>
+  <p class="text-on-surface-variant font-body-md text-body-md mt-1">Empresa, médico coordenador, tipos de exame e exames complementares — salvos no Excel.</p>
+</div>
+
+<div class="grid gap-6 max-w-4xl">
+  <form id="form-config" class="bg-surface border border-border-subtle rounded-xl p-6 space-y-5">
+    <h4 class="font-headline-md text-headline-md text-on-surface">Empresa e responsável</h4>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="col-span-2">
+        <label class="block text-body-md font-semibold mb-1">Razão social</label>
+        <input id="RazaoSocial" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">CNPJ</label>
+        <input id="CNPJ" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Telefone</label>
+        <input id="Telefone" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div class="col-span-2">
+        <label class="block text-body-md font-semibold mb-1">Endereço</label>
+        <input id="Endereco" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Bairro</label>
+        <input id="Bairro" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Cidade/UF</label>
+        <input id="CidadeUf" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">CEP</label>
+        <input id="Cep" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Nome no cabeçalho (hospital/clínica)</label>
+        <input id="HospitalNome" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div class="col-span-2 border-t border-border-subtle pt-4 mt-2">
+        <p class="font-semibold text-body-md mb-3">Médico coordenador do PCMSO</p>
+      </div>
+      <div class="col-span-2">
+        <label class="block text-body-md font-semibold mb-1">Médico</label>
+        <input id="Medico" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">CRM</label>
+        <input id="CRM" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Especialidade</label>
+        <input id="Especialidade" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div class="col-span-2">
+        <label class="block text-body-md font-semibold mb-1">RQE</label>
+        <input id="RQE" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+    </div>
+    <div class="flex justify-end">
+      <button type="submit" class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold hover:opacity-90">Salvar configurações</button>
+    </div>
+  </form>
+
+  <div class="bg-surface border border-border-subtle rounded-xl p-6 space-y-4">
+    <div class="flex justify-between items-center">
+      <h4 class="font-headline-md text-headline-md">Tipos de exame</h4>
+      <button type="button" onclick="abrirModalTipo()" class="bg-primary text-white px-4 py-2 rounded-lg font-bold text-body-md hover:opacity-90">Adicionar</button>
+    </div>
+    <table class="w-full text-left">
+      <thead class="border-b border-border-subtle">
+        <tr>
+          <th class="py-2 text-label-caps text-on-surface-variant uppercase">Ordem</th>
+          <th class="py-2 text-label-caps text-on-surface-variant uppercase">Chave</th>
+          <th class="py-2 text-label-caps text-on-surface-variant uppercase">Nome</th>
+          <th class="py-2 text-right text-label-caps text-on-surface-variant uppercase">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-tipos"></tbody>
+    </table>
+  </div>
+
+  <div class="bg-surface border border-border-subtle rounded-xl p-6 space-y-4">
+    <div class="flex justify-between items-center">
+      <h4 class="font-headline-md text-headline-md">Exames complementares</h4>
+      <button type="button" onclick="abrirModalExame()" class="bg-primary text-white px-4 py-2 rounded-lg font-bold text-body-md hover:opacity-90">Adicionar</button>
+    </div>
+    <table class="w-full text-left">
+      <thead class="border-b border-border-subtle">
+        <tr>
+          <th class="py-2 text-label-caps text-on-surface-variant uppercase">Ordem</th>
+          <th class="py-2 text-label-caps text-on-surface-variant uppercase">Nome</th>
+          <th class="py-2 text-right text-label-caps text-on-surface-variant uppercase">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-exames"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="modal-tipo" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
+  <div class="bg-surface rounded-xl w-full max-w-md p-6">
+    <h3 id="modal-tipo-titulo" class="font-headline-md text-headline-md mb-4">Tipo de exame</h3>
+    <form id="form-tipo" class="space-y-4">
+      <input type="hidden" id="tipo-id">
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Chave (sem espaços)</label>
+        <input id="tipo-chave" required placeholder="ex: admissional" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Nome exibido</label>
+        <input id="tipo-nome" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Ordem</label>
+        <input id="tipo-ordem" type="number" min="1" required value="1" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg">
+      </div>
+      <div class="flex justify-end gap-3">
+        <button type="button" onclick="fecharModalTipo()" class="px-5 py-2.5 rounded-lg font-semibold text-on-surface-variant">Cancelar</button>
+        <button type="submit" class="px-5 py-2.5 rounded-lg font-bold bg-primary text-white">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modal-exame" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
+  <div class="bg-surface rounded-xl w-full max-w-md p-6">
+    <h3 id="modal-exame-titulo" class="font-headline-md text-headline-md mb-4">Exame complementar</h3>
+    <form id="form-exame" class="space-y-4">
+      <input type="hidden" id="exame-id">
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Nome</label>
+        <input id="exame-nome" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Ordem</label>
+        <input id="exame-ordem" type="number" min="1" required value="1" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg">
+      </div>
+      <div class="flex justify-end gap-3">
+        <button type="button" onclick="fecharModalExame()" class="px-5 py-2.5 rounded-lg font-semibold text-on-surface-variant">Cancelar</button>
+        <button type="submit" class="px-5 py-2.5 rounded-lg font-bold bg-primary text-white">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const CONFIG_FIELDS = ['RazaoSocial','CNPJ','Endereco','Bairro','CidadeUf','Cep','Telefone','HospitalNome','Medico','CRM','Especialidade','RQE'];
+
+async function carregarConfig() {
+  const cfg = await api('/api/config');
+  CONFIG_FIELDS.forEach(f => {
+    const el = document.getElementById(f);
+    if (el) el.value = cfg[f] || '';
+  });
+}
+
+document.getElementById('form-config').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {};
+  CONFIG_FIELDS.forEach(f => { payload[f] = document.getElementById(f).value.trim(); });
+  try {
+    await api('/api/config', { method: 'PUT', body: JSON.stringify(payload) });
+    toast('Configurações salvas.');
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+});
+
+async function carregarTipos() {
+  const rows = await api('/api/tipos-exame');
+  const tbody = document.getElementById('tbody-tipos');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="py-3 text-on-surface-variant">Nenhum tipo cadastrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `
+    <tr class="border-b border-border-subtle">
+      <td class="py-3">${escapeHtml(r.Ordem)}</td>
+      <td class="py-3">${escapeHtml(r.Chave)}</td>
+      <td class="py-3">${escapeHtml(r.Nome)}</td>
+      <td class="py-3 text-right">
+        <button onclick='editarTipo(${JSON.stringify(r)})' class="p-2 text-primary"><span class="material-symbols-outlined">edit</span></button>
+        <button onclick="excluirTipo(${r.ID})" class="p-2 text-error"><span class="material-symbols-outlined">delete</span></button>
+      </td>
+    </tr>`).join('');
+}
+
+async function carregarExames() {
+  const rows = await api('/api/exames-complementares');
+  const tbody = document.getElementById('tbody-exames');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="3" class="py-3 text-on-surface-variant">Nenhum exame cadastrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `
+    <tr class="border-b border-border-subtle">
+      <td class="py-3">${escapeHtml(r.Ordem)}</td>
+      <td class="py-3">${escapeHtml(r.Nome)}</td>
+      <td class="py-3 text-right">
+        <button onclick='editarExame(${JSON.stringify(r)})' class="p-2 text-primary"><span class="material-symbols-outlined">edit</span></button>
+        <button onclick="excluirExame(${r.ID})" class="p-2 text-error"><span class="material-symbols-outlined">delete</span></button>
+      </td>
+    </tr>`).join('');
+}
+
+function abrirModalTipo(row) {
+  document.getElementById('modal-tipo').classList.remove('hidden');
+  document.getElementById('modal-tipo').classList.add('flex');
+  document.getElementById('tipo-id').value = row ? row.ID : '';
+  document.getElementById('tipo-chave').value = row ? row.Chave : '';
+  document.getElementById('tipo-nome').value = row ? row.Nome : '';
+  document.getElementById('tipo-ordem').value = row ? row.Ordem : 1;
+  document.getElementById('modal-tipo-titulo').textContent = row ? 'Editar tipo' : 'Novo tipo';
+}
+function fecharModalTipo() {
+  document.getElementById('modal-tipo').classList.add('hidden');
+  document.getElementById('modal-tipo').classList.remove('flex');
+}
+function editarTipo(row) { abrirModalTipo(row); }
+
+document.getElementById('form-tipo').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('tipo-id').value;
+  const payload = {
+    Chave: document.getElementById('tipo-chave').value.trim().toLowerCase().replace(/\s+/g, '_'),
+    Nome: document.getElementById('tipo-nome').value.trim(),
+    Ordem: Number(document.getElementById('tipo-ordem').value) || 1
+  };
+  try {
+    if (id) await api(`/api/tipos-exame/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    else await api('/api/tipos-exame', { method: 'POST', body: JSON.stringify(payload) });
+    fecharModalTipo();
+    toast('Tipo salvo.');
+    carregarTipos();
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+});
+
+async function excluirTipo(id) {
+  if (!confirmarExclusao()) return;
+  try {
+    await api(`/api/tipos-exame/${id}`, { method: 'DELETE' });
+    toast('Tipo excluído.');
+    carregarTipos();
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+function abrirModalExame(row) {
+  document.getElementById('modal-exame').classList.remove('hidden');
+  document.getElementById('modal-exame').classList.add('flex');
+  document.getElementById('exame-id').value = row ? row.ID : '';
+  document.getElementById('exame-nome').value = row ? row.Nome : '';
+  document.getElementById('exame-ordem').value = row ? row.Ordem : 1;
+  document.getElementById('modal-exame-titulo').textContent = row ? 'Editar exame' : 'Novo exame';
+}
+function fecharModalExame() {
+  document.getElementById('modal-exame').classList.add('hidden');
+  document.getElementById('modal-exame').classList.remove('flex');
+}
+function editarExame(row) { abrirModalExame(row); }
+
+document.getElementById('form-exame').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('exame-id').value;
+  const payload = {
+    Nome: document.getElementById('exame-nome').value.trim(),
+    Ordem: Number(document.getElementById('exame-ordem').value) || 1
+  };
+  try {
+    if (id) await api(`/api/exames-complementares/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    else await api('/api/exames-complementares', { method: 'POST', body: JSON.stringify(payload) });
+    fecharModalExame();
+    toast('Exame salvo.');
+    carregarExames();
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+});
+
+async function excluirExame(id) {
+  if (!confirmarExclusao()) return;
+  try {
+    await api(`/api/exames-complementares/${id}`, { method: 'DELETE' });
+    toast('Exame excluído.');
+    carregarExames();
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+Promise.all([carregarConfig(), carregarTipos(), carregarExames()]).catch(err => toast(err.message, 'erro'));
+</script>
+
+<%- include('partials/foot') %>

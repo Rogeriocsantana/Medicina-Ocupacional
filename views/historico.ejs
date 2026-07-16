@@ -1,0 +1,120 @@
+<% const pageTitle = 'Histórico de ASOs'; %>
+<%- include('partials/head', {pageTitle}) %>
+<%- include('partials/nav', {pageTitle, active: 'historico'}) %>
+
+<div class="mb-stack-lg">
+  <div class="flex justify-between items-center gap-4">
+    <h3 class="font-headline-lg text-headline-lg text-on-surface">Histórico de ASOs Gerados</h3>
+    <div class="relative flex items-center shrink-0">
+      <span class="material-symbols-outlined absolute left-3 text-on-surface-variant">search</span>
+      <input id="busca" type="text" placeholder="Buscar por nome, CPF, cargo ou setor..." class="pl-10 pr-4 py-2.5 bg-surface-container-low border-none rounded-full focus:ring-2 focus:ring-primary text-body-md w-80">
+    </div>
+  </div>
+  <p class="text-on-surface-variant font-body-md text-body-md mt-1">
+    <strong>Baixar</strong> reproduz o ASO como foi salvo.
+    <strong>Atualizar</strong> muda a data e recarrega riscos/cargo atuais.
+    <strong>Editar</strong> abre o formulário e salva no mesmo registro.
+  </p>
+</div>
+
+<div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+  <table class="w-full text-left border-collapse">
+    <thead class="bg-background-main border-b border-border-subtle">
+      <tr>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Nome</th>
+        <th class="px-4 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase whitespace-nowrap w-px">CPF</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Cargo</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Setor</th>
+        <th class="px-4 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase whitespace-nowrap w-px">Gerado em</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase text-right min-w-[320px]">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="tbody-historico" class="divide-y divide-border-subtle">
+      <tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+function btnAcao({ href, onclick, title, icon, cor = 'primary' }) {
+  const cls = cor === 'error'
+    ? 'text-error hover:bg-error-container'
+    : 'text-primary hover:bg-primary-fixed';
+  const inner = `<span class="material-symbols-outlined" style="font-size:20px">${icon}</span>`;
+  if (href) {
+    return `<a href="${href}" title="${title}" class="inline-flex items-center justify-center w-8 h-8 rounded ${cls}">${inner}</a>`;
+  }
+  return `<button type="button" onclick="${onclick}" title="${title}" class="inline-flex items-center justify-center w-8 h-8 rounded ${cls}">${inner}</button>`;
+}
+
+async function carregarHistorico(busca = '') {
+  const tbody = document.getElementById('tbody-historico');
+  try {
+    const rows = await api(`/api/historico?busca=${encodeURIComponent(busca)}`);
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Nenhum ASO encontrado.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr class="hover:bg-[#EBF2FA] transition-colors">
+        <td class="px-6 py-4 font-semibold">${escapeHtml(r.Nome)}</td>
+        <td class="px-4 py-4 font-table-data text-table-data whitespace-nowrap">${escapeHtml(r.CPF)}</td>
+        <td class="px-6 py-4">${escapeHtml(r.Cargo)}</td>
+        <td class="px-6 py-4">${escapeHtml(r.Setor)}</td>
+        <td class="px-4 py-4 text-on-surface-variant whitespace-nowrap">${escapeHtml(r.DataGeracao)}</td>
+        <td class="px-4 py-4 whitespace-nowrap">
+          <div class="flex flex-nowrap items-center justify-end gap-0.5">
+            ${btnAcao({ onclick: `baixar(${r.ID})`, title: 'Baixar', icon: 'download' })}
+            ${btnAcao({ href: `/gerar-pdf?id=${r.ID}`, title: 'Editar', icon: 'edit' })}
+            ${btnAcao({ onclick: `regerar(${r.ID})`, title: 'Atualizar', icon: 'refresh' })}
+            ${btnAcao({ onclick: `excluirRegistro(${r.ID})`, title: 'Excluir', icon: 'delete', cor: 'error' })}
+          </div>
+        </td>
+      </tr>`).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-error">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+let debounceTimer;
+document.getElementById('busca').addEventListener('input', (e) => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => carregarHistorico(e.target.value), 300);
+});
+
+async function baixar(id) {
+  try {
+    const res = await fetch(`/api/historico/${id}/download`, { cache: 'no-store' });
+    await downloadPdfFromResponse(res, `ASO_${id}.pdf`);
+    toast('PDF baixado como foi salvo.');
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+async function regerar(id) {
+  try {
+    const res = await fetch(`/api/historico/${id}/regerar`, { method: 'POST', cache: 'no-store' });
+    await downloadPdfFromResponse(res, `ASO_${id}.pdf`);
+    toast('Data atualizada e riscos recarregados.');
+    carregarHistorico(document.getElementById('busca').value);
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+async function excluirRegistro(id) {
+  if (!confirmarExclusao('Excluir este ASO do histórico?')) return;
+  try {
+    await api(`/api/historico/${id}`, { method: 'DELETE' });
+    toast('Registro excluído.');
+    carregarHistorico(document.getElementById('busca').value);
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+carregarHistorico();
+</script>
+
+<%- include('partials/foot') %>

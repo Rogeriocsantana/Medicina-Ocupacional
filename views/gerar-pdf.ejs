@@ -1,0 +1,421 @@
+<% const pageTitle = 'Gerar Novo PDF'; %>
+<%- include('partials/head', {pageTitle}) %>
+<%- include('partials/nav', {pageTitle, active: undefined}) %>
+
+<div class="max-w-2xl mx-auto">
+  <div class="mb-stack-lg">
+    <h3 id="titulo-pagina" class="font-headline-lg text-headline-lg text-on-surface">Gerar Novo ASO</h3>
+    <p id="subtitulo-pagina" class="text-on-surface-variant font-body-md text-body-md mt-1">Campos de exames e conclusão são opcionais — deixe em branco para preencher a caneta no papel.</p>
+  </div>
+
+  <form id="form-pdf" class="bg-surface border border-border-subtle rounded-xl p-6 space-y-5">
+    <input type="hidden" id="historicoId" value="">
+
+    <div id="painel-busca-funcionario" class="bg-background-main border border-border-subtle rounded-lg p-4 space-y-3">
+      <div class="flex items-center justify-between gap-2">
+        <label class="block text-body-md font-semibold">Buscar funcionário cadastrado</label>
+        <a href="/funcionarios" class="text-primary text-body-md font-semibold hover:underline">+ Cadastrar</a>
+      </div>
+      <div class="relative">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+        <input id="buscaFuncionario" type="text" autocomplete="off" placeholder="Digite nome ou CPF..." class="w-full pl-10 pr-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+        <div id="lista-funcionarios" class="hidden absolute z-20 left-0 right-0 mt-1 bg-surface border border-border-subtle rounded-lg shadow-lg max-h-56 overflow-y-auto"></div>
+      </div>
+    </div>
+
+    <div id="funcionario-selecionado" class="hidden items-center justify-between gap-3 bg-primary-fixed border border-border-subtle rounded-lg px-4 py-2.5">
+      <span id="funcionario-selecionado-texto" class="text-body-md text-primary font-semibold"></span>
+      <a id="btn-editar-funcionario" href="/funcionarios" title="Editar cadastro deste funcionário" aria-label="Editar cadastro deste funcionário"
+         class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg text-primary hover:bg-surface">
+        <span class="material-symbols-outlined">edit</span>
+      </a>
+    </div>
+
+    <p class="flex items-start gap-2 text-on-surface-variant text-body-md">
+      <span class="material-symbols-outlined">lock</span>
+      <span>Nome, CPF, data de nascimento, setor e cargo vêm do cadastro do funcionário e não podem ser alterados aqui. Use o botão de edição ao lado do funcionário selecionado (ou a tela Funcionários) para corrigir.</span>
+    </p>
+
+    <div>
+      <label class="block text-body-md font-semibold mb-1">Nome completo</label>
+      <input id="nome" required readonly tabindex="-1" title="Editável somente no cadastro do funcionário" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg bg-surface-container-highest text-on-surface-variant cursor-not-allowed focus:ring-0">
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-body-md font-semibold mb-1">CPF</label>
+        <input id="cpf" required readonly tabindex="-1" placeholder="000.000.000-00" title="Editável somente no cadastro do funcionário" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg bg-surface-container-highest text-on-surface-variant cursor-not-allowed focus:ring-0">
+        <p id="cpf-erro" class="text-error text-body-md mt-1 hidden">CPF inválido.</p>
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Data de nascimento</label>
+        <input id="dataNascimento" type="date" required readonly tabindex="-1" title="Editável somente no cadastro do funcionário" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg bg-surface-container-highest text-on-surface-variant cursor-not-allowed focus:ring-0">
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Setor</label>
+        <select id="setorId" required disabled tabindex="-1" title="Editável somente no cadastro do funcionário" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg bg-surface-container-highest text-on-surface-variant cursor-not-allowed">
+          <option value="">Carregando...</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Cargo</label>
+        <select id="cargoId" required disabled tabindex="-1" title="Editável somente no cadastro do funcionário" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg bg-surface-container-highest text-on-surface-variant cursor-not-allowed">
+          <option value="">Carregando...</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label class="block text-body-md font-semibold mb-1">Tipo de exame</label>
+      <select id="tipoExame" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+        <option value="">Carregando...</option>
+      </select>
+    </div>
+
+    <div id="preview-riscos" class="hidden bg-background-main border border-border-subtle rounded-lg p-4">
+      <h4 class="font-bold text-body-md mb-2">Riscos ocupacionais deste cargo</h4>
+      <div id="preview-riscos-conteudo" class="text-body-md space-y-1"></div>
+    </div>
+
+    <div class="border border-border-subtle rounded-lg overflow-hidden">
+      <button type="button" id="btn-toggle-opcional" class="w-full flex items-center justify-between px-4 py-3 bg-background-main hover:bg-surface-container-low text-left">
+        <span class="font-semibold text-body-md">Preencher exames e conclusão <span class="font-normal text-on-surface-variant">(opcional)</span></span>
+        <span class="material-symbols-outlined" id="icon-toggle-opcional">expand_more</span>
+      </button>
+      <div id="painel-opcional" class="hidden px-4 pb-4 pt-2 space-y-4 border-t border-border-subtle">
+        <p class="text-on-surface-variant text-body-md">Se não preencher, o PDF sai com linhas em branco para completar a caneta.</p>
+
+        <div>
+          <label class="block text-body-md font-semibold mb-1">Data da avaliação clínica</label>
+          <input id="dataAvaliacaoClinica" type="date" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+        </div>
+
+        <div>
+          <label class="block text-body-md font-semibold mb-2">Datas dos exames complementares</label>
+          <div id="lista-exames-datas" class="space-y-2"></div>
+        </div>
+
+        <div>
+          <label class="block text-body-md font-semibold mb-2">Conclusão</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="lista-conclusao">
+            <label class="flex items-center gap-2 text-body-md"><input type="radio" name="conclusao" value="" checked> (em branco / a caneta)</label>
+            <label class="flex items-center gap-2 text-body-md"><input type="radio" name="conclusao" value="apto"> Apto</label>
+            <label class="flex items-center gap-2 text-body-md"><input type="radio" name="conclusao" value="inapto"> Inapto</label>
+            <label class="flex items-center gap-2 text-body-md"><input type="radio" name="conclusao" value="apto_altura"> Apto para trabalho em altura</label>
+            <label class="flex items-center gap-2 text-body-md"><input type="radio" name="conclusao" value="apto_recomendacao"> Apto com recomendações</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-between items-center pt-2 gap-3">
+      <a id="link-voltar-historico" href="/historico" class="hidden px-4 py-2.5 rounded-lg font-semibold text-on-surface-variant hover:bg-surface-container-low">Voltar ao histórico</a>
+      <button type="submit" id="btn-gerar" class="ml-auto bg-primary text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:opacity-90">
+        <span class="material-symbols-outlined" id="btn-gerar-icon">picture_as_pdf</span>
+        <span id="btn-gerar-texto">Gerar PDF</span>
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+const ORDEM_GRUPOS = ['Biológico', 'Físico', 'Químico', 'Ergonômico', 'Acidente'];
+let todosRiscos = [];
+let examesCadastro = [];
+let debounceBuscaFunc = null;
+const params = new URLSearchParams(window.location.search);
+const editId = params.get('id');
+
+bindCpfMask(document.getElementById('cpf'));
+
+function mostrarFuncionarioSelecionado(func) {
+  const box = document.getElementById('funcionario-selecionado');
+  document.getElementById('funcionario-selecionado-texto').textContent =
+    `Selecionado: ${func.Nome} — ${formatCpf(func.CPF)}`;
+  const btn = document.getElementById('btn-editar-funcionario');
+  btn.href = `/funcionarios?editar=${encodeURIComponent(func.ID)}`;
+  box.classList.remove('hidden');
+  box.classList.add('flex');
+}
+
+function limparFuncionarioSelecionado() {
+  const box = document.getElementById('funcionario-selecionado');
+  box.classList.add('hidden');
+  box.classList.remove('flex');
+  document.getElementById('btn-editar-funcionario').href = '/funcionarios';
+}
+
+async function buscarFuncionarioPorCpf(cpf) {
+  const digits = onlyDigits(cpf);
+  if (digits.length !== 11) return null;
+  try {
+    const rows = await api(`/api/funcionarios?busca=${encodeURIComponent(digits)}`);
+    return rows.find(f => onlyDigits(f.CPF) === digits) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function preencherFuncionario(func) {
+  document.getElementById('nome').value = func.Nome || '';
+  document.getElementById('cpf').value = formatCpf(func.CPF || '');
+  document.getElementById('dataNascimento').value = func.DataNascimento || '';
+  document.getElementById('setorId').value = func.SetorID || '';
+  document.getElementById('cargoId').value = func.CargoID || '';
+  document.getElementById('cpf-erro').classList.add('hidden');
+  document.getElementById('buscaFuncionario').value = func.Nome || '';
+  document.getElementById('lista-funcionarios').classList.add('hidden');
+  mostrarFuncionarioSelecionado(func);
+  atualizarPreviewRiscos(func.CargoID);
+}
+
+async function buscarFuncionarios(termo) {
+  const lista = document.getElementById('lista-funcionarios');
+  const q = termo.trim();
+  if (q.length < 2) {
+    lista.classList.add('hidden');
+    lista.innerHTML = '';
+    return;
+  }
+  try {
+    const rows = await api(`/api/funcionarios?busca=${encodeURIComponent(q)}`);
+    if (!rows.length) {
+      lista.innerHTML = '<p class="px-4 py-3 text-on-surface-variant text-body-md">Nenhum funcionário encontrado. <a href="/funcionarios" class="text-primary font-semibold">Cadastrar</a></p>';
+      lista.classList.remove('hidden');
+      return;
+    }
+    lista.innerHTML = rows.slice(0, 8).map(f => `
+      <button type="button" class="w-full text-left px-4 py-3 hover:bg-primary-fixed border-b border-border-subtle last:border-0" onclick='selecionarFuncionario(${JSON.stringify(f).replace(/'/g, "&#39;")})'>
+        <span class="font-semibold block">${escapeHtml(f.Nome)}</span>
+        <span class="text-on-surface-variant text-body-md">${escapeHtml(f.CPF)} · ${escapeHtml(f.CargoNome || '')}</span>
+      </button>`).join('');
+    lista.classList.remove('hidden');
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+function selecionarFuncionario(func) {
+  preencherFuncionario(func);
+}
+
+document.getElementById('buscaFuncionario').addEventListener('input', (e) => {
+  limparFuncionarioSelecionado();
+  clearTimeout(debounceBuscaFunc);
+  debounceBuscaFunc = setTimeout(() => buscarFuncionarios(e.target.value), 250);
+});
+
+document.getElementById('buscaFuncionario').addEventListener('focus', (e) => {
+  if (e.target.value.trim().length >= 2) buscarFuncionarios(e.target.value);
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#buscaFuncionario') && !e.target.closest('#lista-funcionarios')) {
+    document.getElementById('lista-funcionarios').classList.add('hidden');
+  }
+});
+
+document.getElementById('btn-toggle-opcional').addEventListener('click', () => {
+  const painel = document.getElementById('painel-opcional');
+  const icon = document.getElementById('icon-toggle-opcional');
+  const aberto = !painel.classList.contains('hidden');
+  painel.classList.toggle('hidden', aberto);
+  icon.textContent = aberto ? 'expand_more' : 'expand_less';
+});
+
+function abrirPainelOpcional() {
+  document.getElementById('painel-opcional').classList.remove('hidden');
+  document.getElementById('icon-toggle-opcional').textContent = 'expand_less';
+}
+
+function renderExamesDatas(valores = {}) {
+  const box = document.getElementById('lista-exames-datas');
+  if (!examesCadastro.length) {
+    box.innerHTML = '<p class="text-on-surface-variant text-body-md">Nenhum exame cadastrado em Configurações.</p>';
+    return;
+  }
+  box.innerHTML = examesCadastro.map(ex => {
+    const val = valores[String(ex.ID)] || valores[ex.Nome] || '';
+    return `
+    <div class="flex items-center gap-3">
+      <label class="flex-1 text-body-md">${escapeHtml(ex.Nome)}</label>
+      <input type="date" data-exame-id="${ex.ID}" value="${escapeHtml(val)}" class="exame-data px-3 py-2 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary w-44">
+    </div>`;
+  }).join('');
+}
+
+async function atualizarPreviewRiscos(cargoId) {
+  const preview = document.getElementById('preview-riscos');
+  const conteudo = document.getElementById('preview-riscos-conteudo');
+  if (!cargoId) { preview.classList.add('hidden'); return; }
+  try {
+    const vinculo = await api(`/api/cargo-risco/${cargoId}`);
+    const ids = new Set(vinculo.riscoIds.map(String));
+    const selecionados = todosRiscos.filter(r => ids.has(String(r.ID)));
+    if (!selecionados.length) {
+      conteudo.innerHTML = '<p class="text-on-surface-variant">Nenhum risco vinculado a este cargo ainda. Configure em "Relacionamento".</p>';
+    } else {
+      conteudo.innerHTML = ORDEM_GRUPOS.map(g => {
+        const doGrupo = selecionados.filter(r => r.Grupo === g);
+        if (!doGrupo.length) return '';
+        return `<p><strong>${escapeHtml(g)}:</strong> ${doGrupo.map(r => escapeHtml(r.Descricao)).join(' ')}</p>`;
+      }).join('');
+    }
+    preview.classList.remove('hidden');
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+async function carregarSelects() {
+  const [setores, cargos, riscos, tipos, exames] = await Promise.all([
+    api('/api/setores'),
+    api('/api/cargos'),
+    api('/api/riscos'),
+    api('/api/tipos-exame'),
+    api('/api/exames-complementares')
+  ]);
+  todosRiscos = riscos;
+  examesCadastro = exames;
+  document.getElementById('setorId').innerHTML = '<option value="">Selecione...</option>' +
+    setores.map(s => `<option value="${s.ID}">${escapeHtml(s.Nome)}</option>`).join('');
+  document.getElementById('cargoId').innerHTML = '<option value="">Selecione...</option>' +
+    cargos.map(c => `<option value="${c.ID}">${escapeHtml(c.Nome)}</option>`).join('');
+  document.getElementById('tipoExame').innerHTML = tipos.length
+    ? tipos.map(t => `<option value="${escapeHtml(t.Chave)}">${escapeHtml(t.Nome)}</option>`).join('')
+    : '<option value="admissional">Admissional</option>';
+  renderExamesDatas();
+}
+
+async function carregarParaEdicao(id) {
+  const reg = await api(`/api/historico/${id}`);
+  document.getElementById('historicoId').value = reg.ID;
+  document.getElementById('nome').value = reg.Nome || '';
+  document.getElementById('cpf').value = formatCpf(reg.CPF || '');
+  document.getElementById('dataNascimento').value = reg.DataNascimento || '';
+  document.getElementById('setorId').value = reg.SetorID || '';
+  document.getElementById('cargoId').value = reg.CargoID || '';
+  document.getElementById('tipoExame').value = reg.TipoExame || 'admissional';
+  document.getElementById('dataAvaliacaoClinica').value = reg.DataAvaliacaoClinica || '';
+
+  renderExamesDatas(reg.ExamesDatas || {});
+
+  const conc = reg.Conclusao || '';
+  const radio = document.querySelector(`input[name="conclusao"][value="${conc}"]`);
+  if (radio) radio.checked = true;
+  else document.querySelector('input[name="conclusao"][value=""]').checked = true;
+
+  const temOpcional = conc || reg.DataAvaliacaoClinica || Object.keys(reg.ExamesDatas || {}).length;
+  if (temOpcional) abrirPainelOpcional();
+
+  document.getElementById('titulo-pagina').textContent = 'Editar ASO';
+  document.getElementById('subtitulo-pagina').textContent = 'Salve as alterações aqui. Para baixar o PDF, use Baixar (data antiga) ou Atualizar (data nova) no histórico.';
+  document.getElementById('btn-gerar-texto').textContent = 'Salvar';
+  document.getElementById('btn-gerar-icon').textContent = 'save';
+  document.getElementById('link-voltar-historico').classList.remove('hidden');
+  document.getElementById('painel-busca-funcionario').classList.add('hidden');
+
+  const funcVinculado = await buscarFuncionarioPorCpf(reg.CPF);
+  if (funcVinculado) mostrarFuncionarioSelecionado(funcVinculado);
+  else limparFuncionarioSelecionado();
+
+  await atualizarPreviewRiscos(reg.CargoID);
+}
+
+document.getElementById('cargoId').addEventListener('change', (e) => {
+  atualizarPreviewRiscos(e.target.value);
+});
+
+document.getElementById('form-pdf').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  // Campos bloqueados (readonly/disabled) ficam fora da validação nativa do HTML.
+  const faltando = !document.getElementById('nome').value.trim()
+    || !document.getElementById('cpf').value.trim()
+    || !document.getElementById('dataNascimento').value
+    || !document.getElementById('setorId').value
+    || !document.getElementById('cargoId').value;
+  if (faltando) {
+    toast('Selecione um funcionário cadastrado (nome, CPF, nascimento, setor e cargo vêm do cadastro).', 'erro');
+    const busca = document.getElementById('buscaFuncionario');
+    if (!document.getElementById('painel-busca-funcionario').classList.contains('hidden')) busca.focus();
+    return;
+  }
+
+  const cpfEl = document.getElementById('cpf');
+  const cpfErro = document.getElementById('cpf-erro');
+  cpfEl.value = formatCpf(cpfEl.value);
+  if (!isValidCpf(cpfEl.value)) {
+    cpfErro.classList.remove('hidden');
+    cpfEl.focus();
+    return;
+  }
+  cpfErro.classList.add('hidden');
+
+  const examesDatas = {};
+  document.querySelectorAll('.exame-data').forEach(inp => {
+    if (inp.value) examesDatas[inp.dataset.exameId] = inp.value;
+  });
+
+  const conclusaoEl = document.querySelector('input[name="conclusao"]:checked');
+  const historicoId = document.getElementById('historicoId').value;
+
+  const payload = {
+    nome: document.getElementById('nome').value.trim(),
+    cpf: cpfEl.value.trim(),
+    dataNascimento: document.getElementById('dataNascimento').value,
+    setorId: document.getElementById('setorId').value,
+    cargoId: document.getElementById('cargoId').value,
+    tipoExame: document.getElementById('tipoExame').value,
+    conclusao: conclusaoEl ? conclusaoEl.value : '',
+    dataAvaliacaoClinica: document.getElementById('dataAvaliacaoClinica').value || '',
+    examesDatas
+  };
+  if (historicoId) payload.historicoId = Number(historicoId) || historicoId;
+
+  const btn = document.getElementById('btn-gerar');
+  btn.disabled = true;
+  try {
+    if (historicoId) {
+      const data = await api(`/api/historico/${historicoId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      toast(data.mensagem || 'Dados salvos.');
+      window.location.href = '/historico';
+    } else {
+      const res = await fetch('/api/gerar-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify(payload)
+      });
+      await downloadPdfFromResponse(res, 'ASO.pdf');
+      toast('ASO gerado e baixado. Dados salvos no histórico.');
+      document.getElementById('form-pdf').reset();
+      document.getElementById('historicoId').value = '';
+      limparFuncionarioSelecionado();
+      document.getElementById('buscaFuncionario').value = '';
+      document.getElementById('preview-riscos').classList.add('hidden');
+      document.getElementById('painel-opcional').classList.add('hidden');
+      document.getElementById('icon-toggle-opcional').textContent = 'expand_more';
+      await carregarSelects();
+    }
+  } catch (err) {
+    toast(err.message, 'erro');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+(async function init() {
+  try {
+    await carregarSelects();
+    if (editId) await carregarParaEdicao(editId);
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+})();
+</script>
+
+<%- include('partials/foot') %>

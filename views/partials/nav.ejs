@@ -1,0 +1,47 @@
+<body class="bg-background-main text-on-surface">
+<aside class="fixed left-0 top-0 h-full flex flex-col pt-4 pb-8 overflow-y-auto z-40 bg-surface border-r border-border-subtle w-sidebar-width">
+  <div class="px-6 mb-8">
+    <div class="flex items-center gap-3">
+      <img src="/public/images/logo-icone.jpg" alt="Santa Tereza" class="h-11 w-11 rounded-lg object-contain bg-white p-1 border border-border-subtle">
+      <div class="flex flex-col">
+        <h1 class="text-headline-md font-headline-md font-bold text-primary leading-tight">Gestão Ocupacional</h1>
+        <p class="text-on-surface-variant font-body-md text-body-md opacity-70">ASO/PCMSO System</p>
+      </div>
+    </div>
+  </div>
+  <nav class="flex-1 px-4 space-y-1">
+    <% const links = [
+      { href: '/', icon: 'dashboard', label: 'Dashboard', key: 'dashboard' },
+      { href: '/setores', icon: 'domain', label: 'Setores', key: 'setores' },
+      { href: '/cargos', icon: 'work', label: 'Cargos', key: 'cargos' },
+      { href: '/funcionarios', icon: 'badge', label: 'Funcionários', key: 'funcionarios' },
+      { href: '/riscos', icon: 'warning', label: 'Riscos', key: 'riscos' },
+      { href: '/relacionamento', icon: 'account_tree', label: 'Relacionamento', key: 'relacionamento' },
+      { href: '/historico', icon: 'history', label: 'Histórico', key: 'historico' },
+      { href: '/configuracoes', icon: 'settings', label: 'Configurações', key: 'configuracoes' }
+    ]; %>
+    <% links.forEach(l => { %>
+      <a href="<%= l.href %>" class="flex items-center gap-3 px-4 py-3 rounded-lg font-body-md text-body-md transition-all <%= active === l.key ? 'bg-secondary-container text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' %>">
+        <span class="material-symbols-outlined" style="<%= active === l.key ? "font-variation-settings: 'FILL' 1;" : '' %>"><%= l.icon %></span>
+        <span><%= l.label %></span>
+      </a>
+    <% }) %>
+  </nav>
+  <div class="px-4 mt-6">
+    <a href="/gerar-pdf" class="w-full py-3 px-4 bg-primary text-white font-bold rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+      <span class="material-symbols-outlined text-sm">picture_as_pdf</span>
+      Gerar Novo PDF
+    </a>
+  </div>
+</aside>
+
+<main class="ml-sidebar-width flex flex-col min-h-screen">
+  <header class="flex justify-between items-center w-full px-gutter h-16 sticky top-0 z-30 bg-surface border-b border-border-subtle">
+    <div class="flex items-center gap-4">
+      <span class="text-headline-md font-headline-md font-bold text-primary">Clínica Pierro</span>
+      <span class="h-6 w-px bg-border-subtle"></span>
+      <h2 class="font-headline-md text-headline-md text-on-surface"><%= typeof pageTitle !== 'undefined' ? pageTitle : '' %></h2>
+    </div>
+  </header>
+  <div id="toast-container" class="fixed top-20 right-6 z-50 space-y-2"></div>
+  <div class="p-gutter flex-1">
