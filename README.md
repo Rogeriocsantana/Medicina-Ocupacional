@@ -1,128 +1,131 @@
-# Sistema Gerador de ASO / PCMSO — Clínica Pierro
+# Gestão Ocupacional — ASO / PCMSO
 
-Aplicação web **local e offline** para cadastro de Setores, Cargos e Riscos Ocupacionais,
-relacionamento Cargo × Riscos, geração de PDFs de ASO (Atestado de Saúde Ocupacional)
-e histórico com edição, download e regeração.
+Sistema local para gestão ocupacional, cadastro de colaboradores e emissão de ASOs em PDF. Desenvolvido para uso em clínica, com dados armazenados localmente em uma planilha Excel.
 
-Projetado para **uso por uma única pessoa** no computador da clínica. Todos os dados
-ficam em uma planilha Excel (`dados/banco.xlsx`), criada automaticamente na primeira
-execução. Não há banco de dados externo (SQLite, MySQL, etc.).
-
----
-
-## Como rodar (desenvolvimento / uso com Node.js)
-
-1. Instale o Node.js LTS (apenas uma vez): https://nodejs.org/
-2. Dê duplo clique em **`Iniciar_Sistema.bat`**
-   - Na primeira vez, baixa as dependências (`npm install`) — precisa de internet só nesse passo.
-   - Nas próximas vezes, abre direto.
-3. O navegador abre em `http://127.0.0.1:3737`
-4. Para encerrar, feche a janela preta do terminal.
-
-### Linha de comando (opcional)
-
-```bash
-npm install     # apenas na primeira vez
-npm start       # http://127.0.0.1:3737
-```
-
----
-
-## Como rodar na clínica (sem Node.js)
-
-Em um computador com Node.js e internet, gere o executável:
-
-```bash
-npm install
-npm run build:win
-```
-
-Ou dê duplo clique em **`Gerar-exe.bat`**.
-
-Isso cria `dist/ASO-PCMSO-ClinicaPierro.exe`. Copie a pasta **`dist`** inteira
-(`.exe` + `Iniciar.bat` + `LEIA-ME.txt`) para o PC da clínica e execute
-`Iniciar.bat`. Na primeira execução, a pasta `dados/` é criada ao lado do `.exe`.
-
----
-
-## Backup
-
-Copie a pasta **`dados/`** (contém `banco.xlsx`). É o único lugar onde os cadastros
-e o histórico ficam salvos. Os PDFs **não** são armazenados no disco — são gerados
-sob demanda e baixados pelo navegador.
-
----
-
-## Banco de teste (desenvolvimento)
-
-O projeto pode incluir um `dados/banco.xlsx` pré-preenchido para testes. Para resetar:
-
-```bash
-npm run seed
-```
-
-**Não use `npm run seed` em produção** — apaga todos os dados reais.
-
----
-
-## Logos
-
-| Arquivo | Uso |
-|---------|-----|
-| `public/images/logo-icone.jpg` | Menu lateral do site |
-| `public/images/logo-completo.png` | Cabeçalho do PDF gerado |
-
-Para trocar as logos, substitua os arquivos em `public/images/` (ou em
-`dados/public/images/` ao usar o `.exe`, que tem prioridade).
-
----
-
-## Estrutura do projeto
-
-```
-dados/              -> banco.xlsx (Setores, Cargos, Funcionarios, Riscos, Historico...)
-public/images/      -> logos
-views/              -> páginas EJS (interface)
-server/
-  index.js          -> servidor Express (porta 3737)
-  routes/api.js     -> API REST
-  controllers/      -> lógica de cada tela
-  services/
-    excelService.js -> leitura/escrita do Excel
-    pdfService.js   -> geração do PDF do ASO
-```
-
----
+> O projeto é destinado a um único usuário por vez no mesmo computador. Não requer banco de dados externo.
 
 ## Funcionalidades
 
-- **Dashboard** — totais de setores, cargos, riscos e ASOs do mês.
-- **Setores / Cargos / Funcionários / Riscos** — cadastro completo (CRUD).
-- **Relacionamento** — vincula riscos a cada cargo.
-- **Gerar Novo PDF** — busque um funcionário cadastrado ou preencha manualmente; nome, CPF, data de nascimento, setor, cargo e tipo de exame.
-  Riscos do cargo entram automaticamente no PDF (ordem: Biológico → Físico → Químico → Ergonômico → Acidente).
-  Exames complementares, conclusão e data da avaliação clínica são **opcionais** (ficam em branco no PDF para preencher a caneta).
-- **Histórico** — busca e quatro ações por registro:
-  - **Baixar** — reproduz o ASO como foi salvo (data, cargo/setor e riscos da época).
-  - **Editar** — abre o formulário preenchido; ao salvar, atualiza o **mesmo** registro (não cria outro).
-  - **Atualizar** — muda a data de geração e recarrega riscos/cargo com os relacionamentos atuais.
-  - **Excluir** — remove o registro do histórico.
-- **Configurações** — dados da empresa, médico coordenador, tipos de exame e exames complementares.
+- Dashboard com indicadores e últimos ASOs emitidos.
+- Cadastro de setores, cargos, funcionários e riscos ocupacionais.
+- Cadastro independente de exames complementares.
+- Relacionamentos por cargo:
+  - Cargo × Riscos ocupacionais;
+  - Cargo × Exames complementares.
+- Geração de ASO em PDF a partir do funcionário cadastrado.
+- Inclusão automática de riscos e exames conforme o cargo atual do funcionário.
+- Histórico de emissões com busca, download, edição, atualização e exclusão.
+- Atualização do histórico cria uma **nova emissão**, mantendo a anterior intacta.
+- Snapshot do documento emitido para preservar a última versão disponível para download.
+- Paginação nas listas administrativas.
+- Configurações da empresa, médico coordenador e tipos de exame.
+- Backup automático do banco Excel antes de cada gravação.
 
----
+## Tecnologias
 
-## Dados da empresa e médico
+- Node.js
+- Express
+- EJS
+- ExcelJS
+- PDFKit
+- Tailwind CSS via CDN
 
-Os dados padrão (razão social, CNPJ, endereço, médico, CRM, etc.) vêm pré-preenchidos
-no `banco.xlsx` e podem ser alterados em **Configurações** na interface — não é
-necessário editar código.
+## Como executar
 
----
+### Com Node.js
 
-## Observações técnicas
+1. Instale o [Node.js LTS](https://nodejs.org/).
+2. Clone o repositório.
+3. Instale as dependências:
 
-- PDF gerado com **PDFKit** (texto pesquisável, não é imagem).
-- O Excel é lido e escrito a cada operação; adequado para **um usuário** no mesmo PC.
-- Não abra `banco.xlsx` no Excel enquanto o sistema estiver rodando.
-- A interface usa Tailwind via CDN na primeira carga; depois pode funcionar com cache do navegador.
-- Na reimpressão: **Baixar** usa o snapshot salvo; **Atualizar** recarrega riscos e data atuais.
+```bash
+npm install
+```
+
+4. Inicie a aplicação:
+
+```bash
+npm start
+```
+
+5. Acesse no navegador:
+
+```text
+http://127.0.0.1:3737
+```
+
+No Windows, também é possível executar `Iniciar_Sistema.bat`.
+
+## Executável Windows
+
+Para gerar a versão executável:
+
+```bash
+npm run build:win
+```
+
+O arquivo será criado em `dist/ASO-PCMSO-ClinicaPierro.exe`.
+
+## Dados e backup
+
+O banco é criado automaticamente em:
+
+```text
+dados/banco.xlsx
+```
+
+Antes de cada alteração, uma cópia do banco anterior é salva em:
+
+```text
+dados/backups/
+```
+
+Recomenda-se realizar cópias periódicas da pasta `dados/` em local seguro.
+
+> Não mantenha `banco.xlsx` aberto no Excel enquanto o sistema estiver em execução.
+
+## Regras de relacionamento
+
+Os riscos e exames complementares são vinculados diretamente ao cargo.
+
+```text
+Cargo
+ ├── Riscos ocupacionais
+ └── Exames complementares
+```
+
+Durante a emissão ou atualização de um ASO, o sistema utiliza os vínculos do cargo atual do funcionário.
+
+## Histórico de ASOs
+
+| Ação | Comportamento |
+|---|---|
+| Baixar | Baixa a última versão efetivamente emitida daquele registro. |
+| Editar | Altera os dados do registro sem substituir o PDF já emitido. |
+| Atualizar | Cria uma nova linha no histórico, com dados, cargo, setor, riscos e exames atuais do funcionário. |
+| Excluir | Remove somente a emissão selecionada. |
+
+## Estrutura do projeto
+
+```text
+dados/                    Banco Excel e cópias de segurança
+public/images/            Logotipos locais
+server/
+  controllers/            Regras de cada fluxo
+  services/               Leitura do Excel e geração de PDF
+  routes/                 Rotas da API
+views/                    Telas EJS
+dist/                     Executável Windows gerado
+```
+
+## Scripts disponíveis
+
+| Comando | Descrição |
+|---|---|
+| `npm start` | Inicia o sistema localmente. |
+| `npm run seed` | Cria/redefine dados de teste. **Não utilizar em produção.** |
+| `npm run build:win` | Gera o executável Windows. |
+
+## Segurança e privacidade
+
+O sistema trata dados pessoais e ocupacionais. Proteja o computador de uso, mantenha os backups em local seguro e limite o acesso à pasta `dados/` às pessoas autorizadas.
