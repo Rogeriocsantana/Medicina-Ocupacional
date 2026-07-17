@@ -1,5 +1,9 @@
 # Gestão Ocupacional — Especificações para refinamento no Stitch
 
+## Especificação Funcional
+
+Este documento descreve os requisitos funcionais, regras de negócio e diretrizes de interface utilizadas durante o desenvolvimento do sistema Gestão Ocupacional. Ele serve como documentação de apoio para evolução e manutenção do projeto.
+
 ## Objetivo do produto
 
 Aplicação web local para uma clínica de medicina ocupacional. Permite cadastrar a estrutura ocupacional da empresa, organizar riscos e exames por cargo, manter funcionários e emitir ASOs (Atestados de Saúde Ocupacional) em PDF.
@@ -237,7 +241,3 @@ Esta tela possui duas áreas independentes, em sequência vertical:
 - Ao gerar um ASO, o sistema armazena um snapshot do documento para preservar a versão emitida.
 - Ao atualizar um ASO no histórico, cria-se uma nova emissão; o registro anterior não é alterado.
 - O PDF é baixado pelo navegador e não precisa ser exibido como tela interna da aplicação.
-
-## Prompt resumido para o Stitch
-
-> Redesenhe uma aplicação desktop-first de gestão ocupacional para uma clínica. Use layout com sidebar fixa, cabeçalho superior e conteúdo claro em cards e tabelas. A interface deve ser profissional, limpa e confiável, com azul institucional, fundo cinza muito claro, superfícies brancas, ícones de linha e excelente legibilidade. Inclua as telas Dashboard, Setores, Cargos, Funcionários, Riscos, Exames Complementares, Relacionamentos, Gerar ASO, Histórico e Configurações. Em Relacionamentos, apresente dois fluxos: Cargo × Riscos e Cargo × Exames Complementares. Em Gerar ASO, riscos e exames devem aparecer automaticamente conforme o cargo do funcionário. Em Histórico, destacar que “Atualizar” cria uma nova versão e mantém a anterior. Priorize formulários simples, tabelas claras, estados vazios e confirmações de exclusão.
