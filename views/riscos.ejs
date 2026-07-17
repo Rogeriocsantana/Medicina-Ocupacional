@@ -60,18 +60,23 @@
 <script>
 let paginaRiscos = 1;
 const ITENS_POR_PAGINA = 5;
-const CORES_GRUPO = {
-  'Biológico': 'bg-status-biological text-white',
-  'Físico': 'bg-status-physical text-white',
-  'Químico': 'bg-status-chemical text-white',
-  'Ergonômico': 'bg-status-ergonomic text-white',
-  'Acidente': 'bg-status-accident text-white'
-};
+let gruposRisco = [];
+
+function atualizarSelectGrupos() {
+  const select = document.getElementById('risco-grupo');
+  const selecionado = select.value;
+  select.innerHTML = '<option value="">Selecione...</option>' + gruposRisco
+    .map(grupo => `<option value="${escapeHtml(grupo.Nome)}">${escapeHtml(grupo.Nome)}</option>`).join('');
+  select.value = selecionado;
+}
 
 async function carregarRiscos() {
   const tbody = document.getElementById('tbody-riscos');
   try {
-    const riscos = await api('/api/riscos');
+    const [riscos, grupos] = await Promise.all([api('/api/riscos'), api('/api/grupos-risco')]);
+    gruposRisco = grupos;
+    atualizarSelectGrupos();
+    const cores = Object.fromEntries(grupos.map(grupo => [grupo.Nome, grupo.Cor]));
     if (!riscos.length) {
       tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Nenhum risco cadastrado.</td></tr>';
       return;
@@ -80,7 +85,7 @@ async function carregarRiscos() {
     tbody.innerHTML = pagina.map(r => `
       <tr class="hover:bg-[#EBF2FA] transition-colors group">
         <td class="px-6 py-4 font-table-data text-table-data text-on-surface-variant">#${String(r.ID).padStart(3,'0')}</td>
-        <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs font-bold ${CORES_GRUPO[r.Grupo] || 'bg-surface-container-high'}">${r.Grupo}</span></td>
+        <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs font-bold text-white" style="background:${escapeHtml(cores[r.Grupo] || '#727783')}">${escapeHtml(r.Grupo)}</span></td>
         <td class="px-6 py-4 text-body-md max-w-xl">${r.Descricao}</td>
         <td class="px-6 py-4 text-right">
           <div class="flex justify-end gap-2 opacity-60 group-hover:opacity-100">

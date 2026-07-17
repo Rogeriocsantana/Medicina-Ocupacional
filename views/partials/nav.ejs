@@ -47,7 +47,7 @@
       <div class="flex items-center gap-2 pl-3 border-l border-border-subtle">
         <span class="hidden md:block text-right leading-tight"><span id="nav-medico" class="block text-body-md font-bold text-on-surface">Médico coordenador</span><span id="nav-especialidade" class="block text-[11px] text-on-surface-variant">Medicina do Trabalho</span></span>
         <span title="Médico coordenador" class="w-9 h-9 rounded-full bg-primary-fixed text-primary flex items-center justify-center border border-primary-fixed-dim">
-          <span class="material-symbols-outlined">medical_services</span>
+          <span id="nav-icone-medico" class="material-symbols-outlined">medical_services</span>
         </span>
       </div>
     </div>
@@ -61,5 +61,7 @@ api('/api/config').then(config => {
   const especialidade = document.getElementById('nav-especialidade');
   if (medico && config.Medico) medico.textContent = config.Medico;
   if (especialidade && config.Especialidade) especialidade.textContent = config.Especialidade;
+  const icone = document.getElementById('nav-icone-medico');
+  if (icone && config.IconeMedico) icone.textContent = config.IconeMedico;
 }).catch(() => {});
 </script>

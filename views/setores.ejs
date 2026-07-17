@@ -13,6 +13,11 @@
 </div>
 <div id="paginacao-setores"></div>
 
+<div class="mb-4 relative max-w-md">
+  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+  <input id="busca" type="text" placeholder="Buscar por nome do setor..." class="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary text-body-md">
+</div>
+
 <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
   <table class="w-full text-left border-collapse">
     <thead class="bg-background-main border-b border-border-subtle">
@@ -49,10 +54,13 @@
 <script>
 let paginaSetores = 1;
 const ITENS_POR_PAGINA = 5;
-async function carregarSetores() {
+let buscaSetoresAtual = '';
+async function carregarSetores(busca = buscaSetoresAtual) {
+  buscaSetoresAtual = busca;
   const tbody = document.getElementById('tbody-setores');
   try {
-    const setores = await api('/api/setores');
+    const todosSetores = await api('/api/setores');
+    const setores = todosSetores.filter(setor => String(setor.Nome || '').toLowerCase().includes(busca.toLowerCase().trim()));
     if (!setores.length) {
       tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-on-surface-variant">Nenhum setor cadastrado.</td></tr>';
       return;
@@ -75,6 +83,8 @@ async function carregarSetores() {
   }
 }
 function irPaginaSetores(pagina) { if (pagina >= 1) { paginaSetores = pagina; carregarSetores(); } }
+let debounceBuscaSetores;
+document.getElementById('busca').addEventListener('input', (e) => { clearTimeout(debounceBuscaSetores); paginaSetores = 1; debounceBuscaSetores = setTimeout(() => carregarSetores(e.target.value), 250); });
 
 function abrirModal() {
   document.getElementById('modal-titulo').textContent = 'Adicionar Setor';

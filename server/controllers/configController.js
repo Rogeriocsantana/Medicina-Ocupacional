@@ -3,6 +3,7 @@ const { makeCrudController } = require('./crudFactory');
 
 const tiposCtrl = makeCrudController('TiposExame', ['Chave', 'Nome', 'Ordem']);
 const examesCtrl = makeCrudController('ExamesComplementares', ['Nome', 'Ordem']);
+const gruposCtrl = makeCrudController('GruposRisco', ['Nome', 'Cor', 'Ordem']);
 
 module.exports = {
   async obterConfig(req, res) {
@@ -19,7 +20,7 @@ module.exports = {
     try {
       const campos = [
         'RazaoSocial', 'CNPJ', 'Endereco', 'Bairro', 'CidadeUf', 'Cep', 'Telefone',
-        'HospitalNome', 'Medico', 'CRM', 'Especialidade', 'RQE'
+        'HospitalNome', 'Medico', 'CRM', 'Especialidade', 'RQE', 'IconeMedico'
       ];
       const data = {};
       campos.forEach(c => {
@@ -54,6 +55,16 @@ module.exports = {
     }
   },
 
+  async listarGrupos(req, res) {
+    try {
+      res.json(await db.getGruposRisco());
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ erro: 'Falha ao listar grupos de risco.' });
+    }
+  },
+
   tipos: tiposCtrl,
-  exames: examesCtrl
+  exames: examesCtrl,
+  grupos: gruposCtrl
 };

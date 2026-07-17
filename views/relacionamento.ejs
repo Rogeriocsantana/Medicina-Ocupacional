@@ -3,8 +3,10 @@
 <%- include('partials/nav', {pageTitle, active: 'relacionamento'}) %>
 
 <div class="mb-stack-lg">
-  <h3 class="font-headline-lg text-headline-lg text-on-surface">Relacionamentos por cargo</h3>
-  <p class="text-on-surface-variant font-body-md text-body-md mt-1">Configure os riscos ocupacionais e os exames complementares de cada cargo.</p>
+  <div class="flex flex-wrap gap-4 justify-between items-end">
+    <div><h3 class="font-headline-lg text-headline-lg text-on-surface">Relacionamentos por cargo</h3><p class="text-on-surface-variant font-body-md text-body-md mt-1">Configure os riscos ocupacionais e os exames complementares de cada cargo.</p></div>
+    <div class="relative w-full sm:w-72"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span><input id="busca-cargo-relacionamento" type="text" placeholder="Buscar cargo..." class="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary text-body-md"></div>
+  </div>
   <div class="inline-flex mt-5 bg-surface-container p-1 rounded-xl border border-border-subtle" role="tablist">
     <button id="aba-riscos" onclick="mostrarAba('riscos')" class="px-5 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md">Cargo × Riscos</button>
     <button id="aba-exames" onclick="mostrarAba('exames')" class="px-5 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md">Cargo × Exames</button>
@@ -67,7 +69,7 @@
 </div>
 
 <script>
-const ORDEM_GRUPOS = ['Biológico', 'Físico', 'Químico', 'Ergonômico', 'Acidente'];
+let ORDEM_GRUPOS = ['Biológico', 'Físico', 'Químico', 'Ergonômico', 'Acidente'];
 let cargoSelecionadoId = null;
 let todosRiscos = [];
 let cargoExameSelecionadoId = null;
@@ -76,6 +78,7 @@ let todosExames = [];
 let paginaCargosRiscos = 1;
 let paginaCargosExames = 1;
 const CARGOS_POR_PAGINA = 5;
+let buscaCargoRelacionamento = '';
 
 function mostrarAba(aba) {
   const riscos = aba === 'riscos';
@@ -101,14 +104,15 @@ async function carregarCargos() {
     }
     document.getElementById('stat-cargos-mapeados').textContent = resumo.filter(c => c.totalRiscos > 0).length;
     document.getElementById('stat-riscos-vinculados').textContent = resumo.reduce((total, c) => total + Number(c.totalRiscos || 0), 0);
-    const pagina = resumo.slice((paginaCargosRiscos - 1) * CARGOS_POR_PAGINA, paginaCargosRiscos * CARGOS_POR_PAGINA);
+    const filtrados = resumo.filter(cargo => String(cargo.Nome || '').toLowerCase().includes(buscaCargoRelacionamento));
+    const pagina = filtrados.slice((paginaCargosRiscos - 1) * CARGOS_POR_PAGINA, paginaCargosRiscos * CARGOS_POR_PAGINA);
     el.innerHTML = pagina.map(c => `
       <button onclick="selecionarCargo(${c.ID}, '${c.Nome.replace(/'/g, "\\'")}')" id="cargo-item-${c.ID}"
         class="w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex justify-between items-center">
         <span class="font-body-md">${c.Nome}</span>
         <span class="text-xs px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant">${c.totalRiscos} risco(s)</span>
       </button>`).join('');
-    document.getElementById('paginacao-cargos-riscos').innerHTML = htmlPaginacao(paginaCargosRiscos, resumo.length, CARGOS_POR_PAGINA, 'irPaginaCargosRiscos');
+    document.getElementById('paginacao-cargos-riscos').innerHTML = htmlPaginacao(paginaCargosRiscos, filtrados.length, CARGOS_POR_PAGINA, 'irPaginaCargosRiscos');
   } catch (err) {
     el.innerHTML = `<div class="px-4 py-4 text-error">${err.message}</div>`;
   }
@@ -129,6 +133,8 @@ async function selecionarCargo(id, nome) {
 
   try {
     if (!todosRiscos.length) todosRiscos = await api('/api/riscos');
+    const gruposCadastro = await api('/api/grupos-risco');
+    ORDEM_GRUPOS = gruposCadastro.map(grupo => grupo.Nome);
     const vinculo = await api(`/api/cargo-risco/${id}`);
     const selecionados = new Set(vinculo.riscoIds.map(String));
 
@@ -173,14 +179,15 @@ async function carregarCargosExames() {
       return;
     }
     document.getElementById('stat-exames-vinculados').textContent = cargosExames.reduce((total, c) => total + Number(c.totalExames || 0), 0);
-    const pagina = cargosExames.slice((paginaCargosExames - 1) * CARGOS_POR_PAGINA, paginaCargosExames * CARGOS_POR_PAGINA);
+    const filtrados = cargosExames.filter(cargo => String(cargo.Nome || '').toLowerCase().includes(buscaCargoRelacionamento));
+    const pagina = filtrados.slice((paginaCargosExames - 1) * CARGOS_POR_PAGINA, paginaCargosExames * CARGOS_POR_PAGINA);
     el.innerHTML = pagina.map(cargo => `
       <button onclick="selecionarCargoExame(${cargo.ID})" id="cargo-exame-item-${cargo.ID}"
         class="w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex justify-between items-center">
         <span class="font-body-md">${escapeHtml(cargo.Nome)}</span>
         <span class="text-xs px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant">${cargo.totalExames} exame(s)</span>
       </button>`).join('');
-    document.getElementById('paginacao-cargos-exames').innerHTML = htmlPaginacao(paginaCargosExames, cargosExames.length, CARGOS_POR_PAGINA, 'irPaginaCargosExames');
+    document.getElementById('paginacao-cargos-exames').innerHTML = htmlPaginacao(paginaCargosExames, filtrados.length, CARGOS_POR_PAGINA, 'irPaginaCargosExames');
   } catch (err) {
     el.innerHTML = `<div class="px-4 py-4 text-error">${escapeHtml(err.message)}</div>`;
   }
@@ -228,6 +235,17 @@ async function salvarExamesCargo() {
 
 carregarCargos();
 carregarCargosExames();
+let debounceBuscaRelacionamento;
+document.getElementById('busca-cargo-relacionamento').addEventListener('input', event => {
+  clearTimeout(debounceBuscaRelacionamento);
+  paginaCargosRiscos = 1;
+  paginaCargosExames = 1;
+  debounceBuscaRelacionamento = setTimeout(() => {
+    buscaCargoRelacionamento = event.target.value.toLowerCase().trim();
+    carregarCargos();
+    carregarCargosExames();
+  }, 250);
+});
 </script>
 
 <%- include('partials/foot') %>

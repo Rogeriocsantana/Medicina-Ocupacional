@@ -19,8 +19,17 @@ const DEFAULT_CONFIG = {
   Medico: 'Dr. Jefferson Cauz Caminoto',
   CRM: 'CRM-SP 78.266',
   Especialidade: 'Médico do Trabalho',
-  RQE: 'RQE Nº 80.149'
+  RQE: 'RQE Nº 80.149',
+  IconeMedico: 'medical_services'
 };
+
+const DEFAULT_GRUPOS_RISCO = [
+  { Nome: 'Biológico', Cor: '#D93025', Ordem: 1 },
+  { Nome: 'Físico', Cor: '#1A73E8', Ordem: 2 },
+  { Nome: 'Químico', Cor: '#F9AB00', Ordem: 3 },
+  { Nome: 'Ergonômico', Cor: '#188038', Ordem: 4 },
+  { Nome: 'Acidente', Cor: '#7030A0', Ordem: 5 }
+];
 
 const DEFAULT_TIPOS_EXAME = [
   { Chave: 'admissional', Nome: 'Admissional', Ordem: 1 },
@@ -43,6 +52,7 @@ const SCHEMAS = {
   Setores: ['ID', 'Nome'],
   Cargos: ['ID', 'Nome'],
   Riscos: ['ID', 'Grupo', 'Descricao'],
+  GruposRisco: ['ID', 'Nome', 'Cor', 'Ordem'],
   Cargo_Risco: ['ID', 'CargoID', 'RiscoID'],
   Cargo_Exame: ['ID', 'CargoID', 'ExameID'],
   Funcionarios: ['ID', 'Nome', 'CPF', 'DataNascimento', 'SetorID', 'CargoID'],
@@ -53,7 +63,7 @@ const SCHEMAS = {
   ],
   ConfigGeral: [
     'ID', 'RazaoSocial', 'CNPJ', 'Endereco', 'Bairro', 'CidadeUf', 'Cep', 'Telefone',
-    'HospitalNome', 'Medico', 'CRM', 'Especialidade', 'RQE'
+    'HospitalNome', 'Medico', 'CRM', 'Especialidade', 'RQE', 'IconeMedico'
   ],
   TiposExame: ['ID', 'Chave', 'Nome', 'Ordem'],
   ExamesComplementares: ['ID', 'Nome', 'Ordem']
@@ -133,6 +143,11 @@ function seedDefaults(wb) {
     DEFAULT_EXAMES.forEach((e, i) => {
       exames.addRow([i + 1, e.Nome, e.Ordem]);
     });
+  }
+
+  const grupos = wb.getWorksheet('GruposRisco');
+  if (grupos && sheetToObjects(grupos, SCHEMAS.GruposRisco).length === 0) {
+    DEFAULT_GRUPOS_RISCO.forEach((grupo, i) => grupos.addRow([i + 1, grupo.Nome, grupo.Cor, grupo.Ordem]));
   }
 }
 
@@ -367,7 +382,8 @@ async function getConfig() {
     Medico: row.Medico || DEFAULT_CONFIG.Medico,
     CRM: row.CRM || DEFAULT_CONFIG.CRM,
     Especialidade: row.Especialidade || DEFAULT_CONFIG.Especialidade,
-    RQE: row.RQE || DEFAULT_CONFIG.RQE
+    RQE: row.RQE || DEFAULT_CONFIG.RQE,
+    IconeMedico: row.IconeMedico || DEFAULT_CONFIG.IconeMedico
   };
 }
 
@@ -390,6 +406,11 @@ async function getTiposExame() {
 
 async function getExamesComplementares() {
   const rows = await getAll('ExamesComplementares');
+  return rows.sort((a, b) => Number(a.Ordem) - Number(b.Ordem));
+}
+
+async function getGruposRisco() {
+  const rows = await getAll('GruposRisco');
   return rows.sort((a, b) => Number(a.Ordem) - Number(b.Ordem));
 }
 
@@ -453,5 +474,6 @@ module.exports = {
   saveConfig,
   getTiposExame,
   getExamesComplementares,
+  getGruposRisco,
   getUsage
 };

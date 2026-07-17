@@ -69,4 +69,9 @@ router.post('/exames-complementares', configController.exames.criar);
 router.put('/exames-complementares/:id', configController.exames.atualizar);
 router.delete('/exames-complementares/:id', configController.exames.remover);
 
+router.get('/grupos-risco', configController.listarGrupos);
+router.post('/grupos-risco', configController.grupos.criar);
+router.put('/grupos-risco/:id', configController.grupos.atualizar);
+router.delete('/grupos-risco/:id', configController.grupos.remover);
+
 module.exports = router;

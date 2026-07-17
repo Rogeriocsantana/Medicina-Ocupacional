@@ -1,92 +1,74 @@
 # Gestão Ocupacional — ASO / PCMSO
 
-Sistema local para gestão ocupacional, cadastro de colaboradores e emissão de ASOs em PDF. Desenvolvido para uso em clínica, com dados armazenados localmente em uma planilha Excel.
+Sistema local para clínicas de medicina ocupacional. Centraliza cadastros, relacionamentos por cargo e emissão de ASOs em PDF, com dados persistidos em Excel.
 
-> O projeto é destinado a um único usuário por vez no mesmo computador. Não requer banco de dados externo.
-
-## Funcionalidades
+## Principais recursos
 
 - Dashboard com indicadores e últimos ASOs emitidos.
-- Cadastro de setores, cargos, funcionários e riscos ocupacionais.
-- Cadastro independente de exames complementares.
+- Cadastro de setores, cargos, funcionários, riscos, exames complementares e grupos de risco.
+- Busca e paginação com cinco registros por página nas listas administrativas.
 - Relacionamentos por cargo:
-  - Cargo × Riscos ocupacionais;
-  - Cargo × Exames complementares.
-- Geração de ASO em PDF a partir do funcionário cadastrado.
-- Inclusão automática de riscos e exames conforme o cargo atual do funcionário.
-- Histórico de emissões com busca, download, edição, atualização e exclusão.
-- Atualização do histórico cria uma **nova emissão**, mantendo a anterior intacta.
-- Snapshot do documento emitido para preservar a última versão disponível para download.
-- Paginação nas listas administrativas.
-- Configurações da empresa, médico coordenador e tipos de exame.
-- Backup automático do banco Excel antes de cada gravação.
+  - Cargo × riscos ocupacionais;
+  - Cargo × exames complementares.
+- Emissão de ASO em PDF com riscos e exames determinados pelo cargo atual do funcionário.
+- Histórico versionado de ASOs: **Atualizar** cria uma nova emissão e preserva a anterior.
+- Download da última versão efetivamente emitida de cada registro.
+- Backup automático do banco antes de cada gravação.
+- Configurações em abas: clínica, médico, tipos de exame e grupos de risco.
+- Nome, especialidade e ícone configurável do médico exibidos no cabeçalho.
 
 ## Tecnologias
 
-- Node.js
-- Express
+- Node.js e Express
 - EJS
 - ExcelJS
 - PDFKit
-- Tailwind CSS via CDN
+- Tailwind CSS
 
-## Como executar
-
-### Com Node.js
+## Execução local
 
 1. Instale o [Node.js LTS](https://nodejs.org/).
-2. Clone o repositório.
-3. Instale as dependências:
+2. Instale as dependências:
 
 ```bash
 npm install
 ```
 
-4. Inicie a aplicação:
+3. Inicie a aplicação:
 
 ```bash
 npm start
 ```
 
-5. Acesse no navegador:
-
-```text
-http://127.0.0.1:3737
-```
+4. Acesse `http://127.0.0.1:3737`.
 
 No Windows, também é possível executar `Iniciar_Sistema.bat`.
 
 ## Executável Windows
 
-Para gerar a versão executável:
-
 ```bash
 npm run build:win
 ```
 
-O arquivo será criado em `dist/ASO-PCMSO-ClinicaPierro.exe`.
+O executável é gerado em `dist/ASO-PCMSO-ClinicaPierro.exe`.
 
-## Dados e backup
+## Dados, migração e backup
 
-O banco é criado automaticamente em:
+O banco é criado ou migrado automaticamente na inicialização:
 
 ```text
 dados/banco.xlsx
 ```
 
-Antes de cada alteração, uma cópia do banco anterior é salva em:
+Antes de cada gravação, uma cópia é salva em:
 
 ```text
 dados/backups/
 ```
 
-Recomenda-se realizar cópias periódicas da pasta `dados/` em local seguro.
+Não mantenha `banco.xlsx` aberto no Excel enquanto o sistema estiver em execução.
 
-> Não mantenha `banco.xlsx` aberto no Excel enquanto o sistema estiver em execução.
-
-## Regras de relacionamento
-
-Os riscos e exames complementares são vinculados diretamente ao cargo.
+## Regras principais
 
 ```text
 Cargo
@@ -94,38 +76,34 @@ Cargo
  └── Exames complementares
 ```
 
-Durante a emissão ou atualização de um ASO, o sistema utiliza os vínculos do cargo atual do funcionário.
+- Riscos e exames do ASO são carregados pelo cargo atual.
+- Ao atualizar um ASO no histórico, o sistema consulta o cadastro atual do funcionário pelo CPF e cria uma nova emissão.
+- Setores, cargos, riscos e exames com vínculos não podem ser excluídos.
+- Grupos de risco possuem nome, cor e ordem configuráveis.
 
-## Histórico de ASOs
-
-| Ação | Comportamento |
-|---|---|
-| Baixar | Baixa a última versão efetivamente emitida daquele registro. |
-| Editar | Altera os dados do registro sem substituir o PDF já emitido. |
-| Atualizar | Cria uma nova linha no histórico, com dados, cargo, setor, riscos e exames atuais do funcionário. |
-| Excluir | Remove somente a emissão selecionada. |
-
-## Estrutura do projeto
+## Estrutura
 
 ```text
-dados/                    Banco Excel e cópias de segurança
+dados/                    Banco Excel e backups
+docs/                     Arquitetura, requisitos e regras de interface
 public/images/            Logotipos locais
-server/
-  controllers/            Regras de cada fluxo
-  services/               Leitura do Excel e geração de PDF
-  routes/                 Rotas da API
+server/                   API, controllers e serviços
 views/                    Telas EJS
-dist/                     Executável Windows gerado
+dist/                     Executável gerado
 ```
 
-## Scripts disponíveis
+## Scripts
 
 | Comando | Descrição |
 |---|---|
-| `npm start` | Inicia o sistema localmente. |
-| `npm run seed` | Cria/redefine dados de teste. **Não utilizar em produção.** |
+| `npm start` | Inicia a aplicação. |
+| `npm run seed` | Redefine dados de teste. Não utilizar em produção. |
 | `npm run build:win` | Gera o executável Windows. |
 
-## Segurança e privacidade
+## Documentação
 
-O sistema trata dados pessoais e ocupacionais. Proteja o computador de uso, mantenha os backups em local seguro e limite o acesso à pasta `dados/` às pessoas autorizadas.
+Consulte [Arquitetura e Requisitos](docs/ARQUITETURA_E_REQUISITOS.md) para o detalhamento das telas, dados e fluxos.
+
+## Privacidade
+
+O sistema trata dados pessoais e ocupacionais. Proteja o computador, restrinja o acesso à pasta `dados/` e mantenha backups em local seguro.

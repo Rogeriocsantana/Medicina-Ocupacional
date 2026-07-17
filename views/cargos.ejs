@@ -13,6 +13,11 @@
 </div>
 <div id="paginacao-cargos"></div>
 
+<div class="mb-4 relative max-w-md">
+  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+  <input id="busca" type="text" placeholder="Buscar por nome do cargo..." class="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary text-body-md">
+</div>
+
 <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
   <table class="w-full text-left border-collapse">
     <thead class="bg-background-main border-b border-border-subtle">
@@ -48,10 +53,13 @@
 <script>
 let paginaCargos = 1;
 const ITENS_POR_PAGINA = 5;
-async function carregarCargos() {
+let buscaCargosAtual = '';
+async function carregarCargos(busca = buscaCargosAtual) {
+  buscaCargosAtual = busca;
   const tbody = document.getElementById('tbody-cargos');
   try {
-    const cargos = await api('/api/cargos');
+    const todosCargos = await api('/api/cargos');
+    const cargos = todosCargos.filter(cargo => String(cargo.Nome || '').toLowerCase().includes(busca.toLowerCase().trim()));
     if (!cargos.length) {
       tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-on-surface-variant">Nenhum cargo cadastrado.</td></tr>';
       return;
@@ -74,6 +82,8 @@ async function carregarCargos() {
   }
 }
 function irPaginaCargos(pagina) { if (pagina >= 1) { paginaCargos = pagina; carregarCargos(); } }
+let debounceBuscaCargos;
+document.getElementById('busca').addEventListener('input', (e) => { clearTimeout(debounceBuscaCargos); paginaCargos = 1; debounceBuscaCargos = setTimeout(() => carregarCargos(e.target.value), 250); });
 
 function abrirModal() {
   document.getElementById('modal-titulo').textContent = 'Adicionar Cargo';
