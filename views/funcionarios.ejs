@@ -34,6 +34,7 @@
     </tbody>
   </table>
 </div>
+<div id="paginacao-funcionarios"></div>
 
 <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
   <div class="bg-surface rounded-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
@@ -80,6 +81,9 @@
 <script>
 let setoresCache = [];
 let cargosCache = [];
+let paginaFuncionarios = 1;
+const ITENS_POR_PAGINA = 5;
+let buscaFuncionariosAtual = '';
 
 bindCpfMask(document.getElementById('func-cpf'));
 
@@ -100,7 +104,8 @@ async function carregarSelectsModal() {
     cargosCache.map(c => `<option value="${c.ID}">${escapeHtml(c.Nome)}</option>`).join('');
 }
 
-async function carregarFuncionarios(busca = '') {
+async function carregarFuncionarios(busca = buscaFuncionariosAtual) {
+  buscaFuncionariosAtual = busca;
   const tbody = document.getElementById('tbody-funcionarios');
   try {
     const rows = await api(`/api/funcionarios?busca=${encodeURIComponent(busca)}`);
@@ -108,7 +113,8 @@ async function carregarFuncionarios(busca = '') {
       tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Nenhum funcionário encontrado.</td></tr>';
       return;
     }
-    tbody.innerHTML = rows.map(f => `
+    const pagina = rows.slice((paginaFuncionarios - 1) * ITENS_POR_PAGINA, paginaFuncionarios * ITENS_POR_PAGINA);
+    tbody.innerHTML = pagina.map(f => `
       <tr class="hover:bg-[#EBF2FA] transition-colors group">
         <td class="px-6 py-4 font-semibold">${escapeHtml(f.Nome)}</td>
         <td class="px-6 py-4 font-table-data text-table-data">${escapeHtml(f.CPF)}</td>
@@ -122,10 +128,12 @@ async function carregarFuncionarios(busca = '') {
           </div>
         </td>
       </tr>`).join('');
+    document.getElementById('paginacao-funcionarios').innerHTML = htmlPaginacao(paginaFuncionarios, rows.length, ITENS_POR_PAGINA, 'irPaginaFuncionarios');
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-error">${escapeHtml(err.message)}</td></tr>`;
   }
 }
+function irPaginaFuncionarios(pagina) { if (pagina >= 1) { paginaFuncionarios = pagina; carregarFuncionarios(); } }
 
 function abrirModal() {
   document.getElementById('modal-titulo').textContent = 'Adicionar Funcionário';
@@ -203,6 +211,7 @@ async function excluir(id) {
 let debounceTimer;
 document.getElementById('busca').addEventListener('input', (e) => {
   clearTimeout(debounceTimer);
+  paginaFuncionarios = 1;
   debounceTimer = setTimeout(() => carregarFuncionarios(e.target.value), 300);
 });
 

@@ -281,16 +281,7 @@ function gerarAsoPdf({
     y = riscoTop + riscoH + 4;
 
     // ---- EXAMES ----
-    const exames = examesComplementares.length
-      ? examesComplementares
-      : [
-          { ID: 'h', Nome: 'Hemograma completo' },
-          { ID: 's', Nome: 'Sorologia B e C' },
-          { ID: 'v', Nome: 'VDRL' },
-          { ID: 'p', Nome: 'Protoparasitológico' },
-          { ID: 'c', Nome: 'Coprocultura' },
-          { ID: 'm', Nome: 'Micológico de unha' }
-        ];
+    const exames = examesComplementares || [];
 
     const examLines = 3 + exames.length; // obs + avaliacao + blank + exams
     const examEstH = 15 + 12 + 14 + examLines * 13 + 8;

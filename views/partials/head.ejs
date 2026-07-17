@@ -55,6 +55,11 @@
   ::-webkit-scrollbar-thumb { background: #c2c6d4; border-radius: 4px; }
   .modal-backdrop { background: rgba(25, 28, 33, 0.5); }
   [x-cloak] { display: none !important; }
+  .card-animate { transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease; }
+  .card-animate:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(25, 28, 33, .08); border-color: #a9c7ff; }
+  @keyframes card-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .card-enter { animation: card-enter 280ms ease both; }
+  .card-enter:nth-child(2) { animation-delay: 45ms; } .card-enter:nth-child(3) { animation-delay: 90ms; } .card-enter:nth-child(4) { animation-delay: 135ms; }
 </style>
 <script>
 // ---- Helpers compartilhados (carregados antes de qualquer script de página) ----
@@ -86,6 +91,17 @@ function toast(mensagem, tipo = 'sucesso') {
 
 function confirmarExclusao(mensagem) {
   return window.confirm(mensagem || 'Tem certeza que deseja excluir este registro?');
+}
+
+function htmlPaginacao(pagina, totalItens, porPagina, funcao) {
+  const totalPaginas = Math.max(1, Math.ceil(totalItens / porPagina));
+  if (totalPaginas <= 1) return '';
+  const inicio = (pagina - 1) * porPagina + 1;
+  const fim = Math.min(pagina * porPagina, totalItens);
+  const botoes = Array.from({ length: totalPaginas }, (_, i) => i + 1)
+    .filter(n => n === 1 || n === totalPaginas || Math.abs(n - pagina) <= 1)
+    .map((n, i, arr) => `${i && n - arr[i - 1] > 1 ? '<span class="px-1 text-on-surface-variant">…</span>' : ''}<button type="button" onclick="${funcao}(${n})" class="min-w-8 h-8 px-2 rounded text-sm font-semibold ${n === pagina ? 'bg-primary text-white' : 'text-on-surface hover:bg-surface-container-low'}">${n}</button>`).join('');
+  return `<div class="px-6 py-3 border-t border-border-subtle flex flex-wrap gap-3 justify-between items-center bg-surface"><p class="text-table-data text-on-surface-variant">Mostrando ${inicio}–${fim} de ${totalItens}</p><div class="flex items-center gap-1"><button type="button" onclick="${funcao}(${pagina - 1})" ${pagina === 1 ? 'disabled' : ''} class="w-8 h-8 rounded border border-border-subtle disabled:opacity-40 hover:bg-surface-container-low"><span class="material-symbols-outlined text-sm">chevron_left</span></button>${botoes}<button type="button" onclick="${funcao}(${pagina + 1})" ${pagina === totalPaginas ? 'disabled' : ''} class="w-8 h-8 rounded border border-border-subtle disabled:opacity-40 hover:bg-surface-container-low"><span class="material-symbols-outlined text-sm">chevron_right</span></button></div></div>`;
 }
 
 function escapeHtml(value) {

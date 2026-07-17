@@ -3,20 +3,20 @@
 <%- include('partials/nav', {pageTitle, active: 'dashboard'}) %>
 
 <div class="grid grid-cols-1 md:grid-cols-4 gap-stack-md mb-stack-lg">
-  <div class="bg-surface border border-border-subtle rounded-xl p-6">
-    <p class="text-on-surface-variant text-body-md">Setores cadastrados</p>
+  <div class="bg-surface border border-border-subtle rounded-xl p-6 card-animate card-enter">
+    <span class="material-symbols-outlined text-primary">domain</span><p class="text-on-surface-variant text-body-md mt-3">Setores cadastrados</p>
     <p id="stat-setores" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
   </div>
-  <div class="bg-surface border border-border-subtle rounded-xl p-6">
-    <p class="text-on-surface-variant text-body-md">Cargos cadastrados</p>
+  <div class="bg-surface border border-border-subtle rounded-xl p-6 card-animate card-enter">
+    <span class="material-symbols-outlined text-primary">work</span><p class="text-on-surface-variant text-body-md mt-3">Cargos cadastrados</p>
     <p id="stat-cargos" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
   </div>
-  <div class="bg-surface border border-border-subtle rounded-xl p-6">
-    <p class="text-on-surface-variant text-body-md">Riscos cadastrados</p>
+  <div class="bg-surface border border-border-subtle rounded-xl p-6 card-animate card-enter">
+    <span class="material-symbols-outlined text-primary">warning</span><p class="text-on-surface-variant text-body-md mt-3">Riscos cadastrados</p>
     <p id="stat-riscos" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
   </div>
-  <div class="bg-surface border border-border-subtle rounded-xl p-6">
-    <p class="text-on-surface-variant text-body-md">ASOs gerados este mês</p>
+  <div class="bg-surface border border-border-subtle rounded-xl p-6 card-animate card-enter">
+    <span class="material-symbols-outlined text-primary">picture_as_pdf</span><p class="text-on-surface-variant text-body-md mt-3">ASOs gerados este mês</p>
     <p id="stat-mes" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
   </div>
 </div>

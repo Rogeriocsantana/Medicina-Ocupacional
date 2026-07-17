@@ -55,6 +55,12 @@ function makeCrudController(sheetName, allowedFields) {
 
     async remover(req, res) {
       try {
+        const usage = await db.getUsage(sheetName, req.params.id);
+        if (usage.length) {
+          return res.status(409).json({
+            erro: `Não é possível excluir: este registro está em uso por ${usage.join(', ')}. Remova os vínculos antes de excluí-lo.`
+          });
+        }
         const ok = await db.remove(sheetName, req.params.id);
         if (!ok) return res.status(404).json({ erro: 'Registro não encontrado.' });
         res.json({ sucesso: true });

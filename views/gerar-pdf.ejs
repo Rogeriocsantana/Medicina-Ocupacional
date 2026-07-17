@@ -121,6 +121,7 @@
 <script>
 const ORDEM_GRUPOS = ['Biológico', 'Físico', 'Químico', 'Ergonômico', 'Acidente'];
 let todosRiscos = [];
+let todosExames = [];
 let examesCadastro = [];
 let debounceBuscaFunc = null;
 const params = new URLSearchParams(window.location.search);
@@ -167,6 +168,7 @@ function preencherFuncionario(func) {
   document.getElementById('lista-funcionarios').classList.add('hidden');
   mostrarFuncionarioSelecionado(func);
   atualizarPreviewRiscos(func.CargoID);
+  atualizarExamesDoCargo(func.CargoID);
 }
 
 async function buscarFuncionarios(termo) {
@@ -231,7 +233,7 @@ function abrirPainelOpcional() {
 function renderExamesDatas(valores = {}) {
   const box = document.getElementById('lista-exames-datas');
   if (!examesCadastro.length) {
-    box.innerHTML = '<p class="text-on-surface-variant text-body-md">Nenhum exame cadastrado em Configurações.</p>';
+    box.innerHTML = '<p class="text-on-surface-variant text-body-md">Nenhum exame complementar vinculado a este setor.</p>';
     return;
   }
   box.innerHTML = examesCadastro.map(ex => {
@@ -242,6 +244,24 @@ function renderExamesDatas(valores = {}) {
       <input type="date" data-exame-id="${ex.ID}" value="${escapeHtml(val)}" class="exame-data px-3 py-2 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary w-44">
     </div>`;
   }).join('');
+}
+
+async function atualizarExamesDoCargo(cargoId, valores = {}) {
+  if (!cargoId) {
+    examesCadastro = [];
+    renderExamesDatas(valores);
+    return;
+  }
+  try {
+    const vinculo = await api(`/api/cargo-exame/${cargoId}`);
+    const ids = new Set(vinculo.exameIds.map(String));
+    examesCadastro = todosExames.filter(exame => ids.has(String(exame.ID)));
+    renderExamesDatas(valores);
+  } catch (err) {
+    examesCadastro = [];
+    renderExamesDatas(valores);
+    toast(err.message, 'erro');
+  }
 }
 
 async function atualizarPreviewRiscos(cargoId) {
@@ -276,7 +296,8 @@ async function carregarSelects() {
     api('/api/exames-complementares')
   ]);
   todosRiscos = riscos;
-  examesCadastro = exames;
+  todosExames = exames;
+  examesCadastro = [];
   document.getElementById('setorId').innerHTML = '<option value="">Selecione...</option>' +
     setores.map(s => `<option value="${s.ID}">${escapeHtml(s.Nome)}</option>`).join('');
   document.getElementById('cargoId').innerHTML = '<option value="">Selecione...</option>' +
@@ -284,7 +305,7 @@ async function carregarSelects() {
   document.getElementById('tipoExame').innerHTML = tipos.length
     ? tipos.map(t => `<option value="${escapeHtml(t.Chave)}">${escapeHtml(t.Nome)}</option>`).join('')
     : '<option value="admissional">Admissional</option>';
-  renderExamesDatas();
+  await atualizarExamesDoCargo(document.getElementById('cargoId').value);
 }
 
 async function carregarParaEdicao(id) {
@@ -298,7 +319,7 @@ async function carregarParaEdicao(id) {
   document.getElementById('tipoExame').value = reg.TipoExame || 'admissional';
   document.getElementById('dataAvaliacaoClinica').value = reg.DataAvaliacaoClinica || '';
 
-  renderExamesDatas(reg.ExamesDatas || {});
+  await atualizarExamesDoCargo(reg.CargoID, reg.ExamesDatas || {});
 
   const conc = reg.Conclusao || '';
   const radio = document.querySelector(`input[name="conclusao"][value="${conc}"]`);
@@ -324,6 +345,7 @@ async function carregarParaEdicao(id) {
 
 document.getElementById('cargoId').addEventListener('change', (e) => {
   atualizarPreviewRiscos(e.target.value);
+  atualizarExamesDoCargo(e.target.value);
 });
 
 document.getElementById('form-pdf').addEventListener('submit', async (e) => {

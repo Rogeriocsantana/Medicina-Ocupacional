@@ -11,6 +11,7 @@
     <span class="material-symbols-outlined">add</span> Adicionar Setor
   </button>
 </div>
+<div id="paginacao-setores"></div>
 
 <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
   <table class="w-full text-left border-collapse">
@@ -46,6 +47,8 @@
 </div>
 
 <script>
+let paginaSetores = 1;
+const ITENS_POR_PAGINA = 5;
 async function carregarSetores() {
   const tbody = document.getElementById('tbody-setores');
   try {
@@ -54,7 +57,8 @@ async function carregarSetores() {
       tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-on-surface-variant">Nenhum setor cadastrado.</td></tr>';
       return;
     }
-    tbody.innerHTML = setores.map(s => `
+    const pagina = setores.slice((paginaSetores - 1) * ITENS_POR_PAGINA, paginaSetores * ITENS_POR_PAGINA);
+    tbody.innerHTML = pagina.map(s => `
       <tr class="hover:bg-[#EBF2FA] transition-colors group">
         <td class="px-6 py-4 font-table-data text-table-data text-on-surface-variant">#SET-${String(s.ID).padStart(3,'0')}</td>
         <td class="px-6 py-4 font-semibold">${s.Nome}</td>
@@ -65,10 +69,12 @@ async function carregarSetores() {
           </div>
         </td>
       </tr>`).join('');
+    document.getElementById('paginacao-setores').innerHTML = htmlPaginacao(paginaSetores, setores.length, ITENS_POR_PAGINA, 'irPaginaSetores');
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-4 text-error">${err.message}</td></tr>`;
   }
 }
+function irPaginaSetores(pagina) { if (pagina >= 1) { paginaSetores = pagina; carregarSetores(); } }
 
 function abrirModal() {
   document.getElementById('modal-titulo').textContent = 'Adicionar Setor';

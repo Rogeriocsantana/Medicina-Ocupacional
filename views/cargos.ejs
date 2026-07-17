@@ -11,6 +11,7 @@
     <span class="material-symbols-outlined">add</span> Adicionar Cargo
   </button>
 </div>
+<div id="paginacao-cargos"></div>
 
 <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
   <table class="w-full text-left border-collapse">
@@ -45,6 +46,8 @@
 </div>
 
 <script>
+let paginaCargos = 1;
+const ITENS_POR_PAGINA = 5;
 async function carregarCargos() {
   const tbody = document.getElementById('tbody-cargos');
   try {
@@ -53,7 +56,8 @@ async function carregarCargos() {
       tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-on-surface-variant">Nenhum cargo cadastrado.</td></tr>';
       return;
     }
-    tbody.innerHTML = cargos.map(c => `
+    const pagina = cargos.slice((paginaCargos - 1) * ITENS_POR_PAGINA, paginaCargos * ITENS_POR_PAGINA);
+    tbody.innerHTML = pagina.map(c => `
       <tr class="hover:bg-[#EBF2FA] transition-colors group">
         <td class="px-6 py-4 font-table-data text-table-data text-on-surface-variant">#CAR-${String(c.ID).padStart(3,'0')}</td>
         <td class="px-6 py-4 font-semibold">${c.Nome}</td>
@@ -64,10 +68,12 @@ async function carregarCargos() {
           </div>
         </td>
       </tr>`).join('');
+    document.getElementById('paginacao-cargos').innerHTML = htmlPaginacao(paginaCargos, cargos.length, ITENS_POR_PAGINA, 'irPaginaCargos');
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-4 text-error">${err.message}</td></tr>`;
   }
 }
+function irPaginaCargos(pagina) { if (pagina >= 1) { paginaCargos = pagina; carregarCargos(); } }
 
 function abrirModal() {
   document.getElementById('modal-titulo').textContent = 'Adicionar Cargo';

@@ -1,20 +1,56 @@
-<% const pageTitle = 'Relacionamento Cargo x Riscos'; %>
+<% const pageTitle = 'Relacionamentos'; %>
 <%- include('partials/head', {pageTitle}) %>
 <%- include('partials/nav', {pageTitle, active: 'relacionamento'}) %>
 
 <div class="mb-stack-lg">
-  <h3 class="font-headline-lg text-headline-lg text-on-surface">Relacionamento Cargo × Riscos</h3>
-  <p class="text-on-surface-variant font-body-md text-body-md mt-1">Selecione um cargo e associe os riscos ocupacionais correspondentes.</p>
+  <h3 class="font-headline-lg text-headline-lg text-on-surface">Relacionamentos por cargo</h3>
+  <p class="text-on-surface-variant font-body-md text-body-md mt-1">Configure os riscos ocupacionais e os exames complementares de cada cargo.</p>
+  <div class="inline-flex mt-5 bg-surface-container p-1 rounded-xl border border-border-subtle" role="tablist">
+    <button id="aba-riscos" onclick="mostrarAba('riscos')" class="px-5 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md">Cargo × Riscos</button>
+    <button id="aba-exames" onclick="mostrarAba('exames')" class="px-5 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md">Cargo × Exames</button>
+  </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-stack-md">
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Cargos mapeados</p><p id="stat-cargos-mapeados" class="text-headline-lg text-primary mt-2">–</p></div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Riscos vinculados</p><p id="stat-riscos-vinculados" class="text-headline-lg text-primary mt-2">–</p></div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Exames vinculados</p><p id="stat-exames-vinculados" class="text-headline-lg text-primary mt-2">–</p></div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Status</p><p class="text-body-lg font-bold text-status-ergonomic mt-2">Em dia</p></div>
+</div>
+
+<div id="painel-exames" class="hidden grid grid-cols-1 md:grid-cols-3 gap-stack-md">
   <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden md:col-span-1">
     <div class="px-4 py-3 border-b border-border-subtle bg-background-main">
       <h4 class="font-headline-md text-headline-md text-on-surface" style="font-size:16px">Cargos</h4>
     </div>
-    <div id="lista-cargos" class="divide-y divide-border-subtle max-h-[70vh] overflow-y-auto">
+    <div id="lista-cargos-exames" class="divide-y divide-border-subtle">
       <div class="px-4 py-4 text-on-surface-variant">Carregando...</div>
     </div>
+    <div id="paginacao-cargos-exames"></div>
+  </div>
+
+  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden md:col-span-2">
+    <div class="px-6 py-4 border-b border-border-subtle bg-background-main flex justify-between items-center">
+      <h4 id="titulo-cargo-exames" class="font-headline-md text-headline-md text-on-surface" style="font-size:16px">Selecione um cargo à esquerda</h4>
+      <button id="btn-salvar-exames" onclick="salvarExamesCargo()" disabled class="bg-primary text-white px-5 py-2 rounded-lg font-bold disabled:opacity-40 flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">save</span> Salvar vínculos
+      </button>
+    </div>
+    <div id="lista-exames-setor" class="p-6 space-y-2">
+      <p class="text-on-surface-variant">Nenhum cargo selecionado.</p>
+    </div>
+  </div>
+</div>
+
+<div id="painel-riscos" class="grid grid-cols-1 md:grid-cols-3 gap-stack-md">
+  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden md:col-span-1">
+    <div class="px-4 py-3 border-b border-border-subtle bg-background-main">
+      <h4 class="font-headline-md text-headline-md text-on-surface" style="font-size:16px">Cargos</h4>
+    </div>
+    <div id="lista-cargos" class="divide-y divide-border-subtle">
+      <div class="px-4 py-4 text-on-surface-variant">Carregando...</div>
+    </div>
+    <div id="paginacao-cargos-riscos"></div>
   </div>
 
   <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden md:col-span-2">
@@ -34,6 +70,26 @@
 const ORDEM_GRUPOS = ['Biológico', 'Físico', 'Químico', 'Ergonômico', 'Acidente'];
 let cargoSelecionadoId = null;
 let todosRiscos = [];
+let cargoExameSelecionadoId = null;
+let cargosExames = [];
+let todosExames = [];
+let paginaCargosRiscos = 1;
+let paginaCargosExames = 1;
+const CARGOS_POR_PAGINA = 5;
+
+function mostrarAba(aba) {
+  const riscos = aba === 'riscos';
+  document.getElementById('painel-riscos').classList.toggle('hidden', !riscos);
+  document.getElementById('painel-exames').classList.toggle('hidden', riscos);
+  document.getElementById('painel-riscos').classList.toggle('grid', riscos);
+  document.getElementById('painel-exames').classList.toggle('grid', !riscos);
+  document.getElementById('aba-riscos').className = riscos
+    ? 'px-5 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md'
+    : 'px-5 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md';
+  document.getElementById('aba-exames').className = !riscos
+    ? 'px-5 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md'
+    : 'px-5 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md';
+}
 
 async function carregarCargos() {
   const el = document.getElementById('lista-cargos');
@@ -43,16 +99,21 @@ async function carregarCargos() {
       el.innerHTML = '<div class="px-4 py-4 text-on-surface-variant">Nenhum cargo cadastrado.</div>';
       return;
     }
-    el.innerHTML = resumo.map(c => `
+    document.getElementById('stat-cargos-mapeados').textContent = resumo.filter(c => c.totalRiscos > 0).length;
+    document.getElementById('stat-riscos-vinculados').textContent = resumo.reduce((total, c) => total + Number(c.totalRiscos || 0), 0);
+    const pagina = resumo.slice((paginaCargosRiscos - 1) * CARGOS_POR_PAGINA, paginaCargosRiscos * CARGOS_POR_PAGINA);
+    el.innerHTML = pagina.map(c => `
       <button onclick="selecionarCargo(${c.ID}, '${c.Nome.replace(/'/g, "\\'")}')" id="cargo-item-${c.ID}"
         class="w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex justify-between items-center">
         <span class="font-body-md">${c.Nome}</span>
         <span class="text-xs px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant">${c.totalRiscos} risco(s)</span>
       </button>`).join('');
+    document.getElementById('paginacao-cargos-riscos').innerHTML = htmlPaginacao(paginaCargosRiscos, resumo.length, CARGOS_POR_PAGINA, 'irPaginaCargosRiscos');
   } catch (err) {
     el.innerHTML = `<div class="px-4 py-4 text-error">${err.message}</div>`;
   }
 }
+function irPaginaCargosRiscos(pagina) { if (pagina >= 1) { paginaCargosRiscos = pagina; carregarCargos(); } }
 
 async function selecionarCargo(id, nome) {
   cargoSelecionadoId = id;
@@ -103,7 +164,70 @@ async function salvarRelacionamento() {
   }
 }
 
+async function carregarCargosExames() {
+  const el = document.getElementById('lista-cargos-exames');
+  try {
+    cargosExames = await api('/api/cargo-exame/resumo');
+    if (!cargosExames.length) {
+      el.innerHTML = '<div class="px-4 py-4 text-on-surface-variant">Nenhum cargo cadastrado.</div>';
+      return;
+    }
+    document.getElementById('stat-exames-vinculados').textContent = cargosExames.reduce((total, c) => total + Number(c.totalExames || 0), 0);
+    const pagina = cargosExames.slice((paginaCargosExames - 1) * CARGOS_POR_PAGINA, paginaCargosExames * CARGOS_POR_PAGINA);
+    el.innerHTML = pagina.map(cargo => `
+      <button onclick="selecionarCargoExame(${cargo.ID})" id="cargo-exame-item-${cargo.ID}"
+        class="w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex justify-between items-center">
+        <span class="font-body-md">${escapeHtml(cargo.Nome)}</span>
+        <span class="text-xs px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant">${cargo.totalExames} exame(s)</span>
+      </button>`).join('');
+    document.getElementById('paginacao-cargos-exames').innerHTML = htmlPaginacao(paginaCargosExames, cargosExames.length, CARGOS_POR_PAGINA, 'irPaginaCargosExames');
+  } catch (err) {
+    el.innerHTML = `<div class="px-4 py-4 text-error">${escapeHtml(err.message)}</div>`;
+  }
+}
+function irPaginaCargosExames(pagina) { if (pagina >= 1) { paginaCargosExames = pagina; carregarCargosExames(); } }
+
+async function selecionarCargoExame(id) {
+  cargoExameSelecionadoId = id;
+  const cargo = cargosExames.find(item => String(item.ID) === String(id));
+  document.querySelectorAll('[id^="cargo-exame-item-"]').forEach(b => b.classList.remove('bg-secondary-container', 'font-bold'));
+  const item = document.getElementById(`cargo-exame-item-${id}`);
+  if (item) item.classList.add('bg-secondary-container', 'font-bold');
+  document.getElementById('titulo-cargo-exames').textContent = `Exames para: ${cargo ? cargo.Nome : ''}`;
+  document.getElementById('btn-salvar-exames').disabled = false;
+
+  const lista = document.getElementById('lista-exames-setor');
+  lista.innerHTML = '<p class="text-on-surface-variant">Carregando exames...</p>';
+  try {
+    if (!todosExames.length) todosExames = await api('/api/exames-complementares');
+    const vinculo = await api(`/api/cargo-exame/${id}`);
+    const selecionados = new Set(vinculo.exameIds.map(String));
+    lista.innerHTML = todosExames.length
+      ? todosExames.map(exame => `
+        <label class="flex items-center gap-3 p-3 border border-border-subtle rounded-lg hover:bg-surface-container-low cursor-pointer">
+          <input type="checkbox" value="${exame.ID}" class="chk-exame-setor" ${selecionados.has(String(exame.ID)) ? 'checked' : ''}>
+          <span class="text-body-md">${escapeHtml(exame.Nome)}</span>
+        </label>`).join('')
+      : '<p class="text-on-surface-variant">Nenhum exame complementar cadastrado. Cadastre-o em Configurações.</p>';
+  } catch (err) {
+    lista.innerHTML = `<p class="text-error">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+async function salvarExamesCargo() {
+  if (!cargoExameSelecionadoId) return;
+  const exameIds = Array.from(document.querySelectorAll('.chk-exame-setor:checked')).map(c => Number(c.value));
+  try {
+    await api('/api/cargo-exame', { method: 'POST', body: JSON.stringify({ cargoId: cargoExameSelecionadoId, exameIds }) });
+    toast('Vínculos de exames salvos com sucesso.');
+    carregarCargosExames();
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
 carregarCargos();
+carregarCargosExames();
 </script>
 
 <%- include('partials/foot') %>

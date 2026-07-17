@@ -11,11 +11,12 @@
     </div>
   </div>
   <p class="text-on-surface-variant font-body-md text-body-md mt-1">
-    <strong>Baixar</strong> reproduz o ASO como foi salvo.
-    <strong>Atualizar</strong> muda a data e recarrega riscos/cargo atuais.
+    <strong>Baixar</strong> reproduz a última versão emitida.
+    <strong>Atualizar</strong> emite uma nova versão com data, riscos e dados atuais.
     <strong>Editar</strong> abre o formulário e salva no mesmo registro.
   </p>
 </div>
+<div id="paginacao-historico"></div>
 
 <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
   <table class="w-full text-left border-collapse">
@@ -47,7 +48,11 @@ function btnAcao({ href, onclick, title, icon, cor = 'primary' }) {
   return `<button type="button" onclick="${onclick}" title="${title}" class="inline-flex items-center justify-center w-8 h-8 rounded ${cls}">${inner}</button>`;
 }
 
-async function carregarHistorico(busca = '') {
+let paginaHistorico = 1;
+const ITENS_POR_PAGINA = 5;
+let buscaHistoricoAtual = '';
+async function carregarHistorico(busca = buscaHistoricoAtual) {
+  buscaHistoricoAtual = busca;
   const tbody = document.getElementById('tbody-historico');
   try {
     const rows = await api(`/api/historico?busca=${encodeURIComponent(busca)}`);
@@ -55,7 +60,8 @@ async function carregarHistorico(busca = '') {
       tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Nenhum ASO encontrado.</td></tr>';
       return;
     }
-    tbody.innerHTML = rows.map(r => `
+    const pagina = rows.slice((paginaHistorico - 1) * ITENS_POR_PAGINA, paginaHistorico * ITENS_POR_PAGINA);
+    tbody.innerHTML = pagina.map(r => `
       <tr class="hover:bg-[#EBF2FA] transition-colors">
         <td class="px-6 py-4 font-semibold">${escapeHtml(r.Nome)}</td>
         <td class="px-4 py-4 font-table-data text-table-data whitespace-nowrap">${escapeHtml(r.CPF)}</td>
@@ -71,6 +77,7 @@ async function carregarHistorico(busca = '') {
           </div>
         </td>
       </tr>`).join('');
+    document.getElementById('paginacao-historico').innerHTML = htmlPaginacao(paginaHistorico, rows.length, ITENS_POR_PAGINA, 'irPaginaHistorico');
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-error">${escapeHtml(err.message)}</td></tr>`;
   }
@@ -79,14 +86,17 @@ async function carregarHistorico(busca = '') {
 let debounceTimer;
 document.getElementById('busca').addEventListener('input', (e) => {
   clearTimeout(debounceTimer);
+  paginaHistorico = 1;
   debounceTimer = setTimeout(() => carregarHistorico(e.target.value), 300);
 });
+
+function irPaginaHistorico(pagina) { if (pagina >= 1) { paginaHistorico = pagina; carregarHistorico(); } }
 
 async function baixar(id) {
   try {
     const res = await fetch(`/api/historico/${id}/download`, { cache: 'no-store' });
     await downloadPdfFromResponse(res, `ASO_${id}.pdf`);
-    toast('PDF baixado como foi salvo.');
+    toast('Última versão emitida baixada.');
   } catch (err) {
     toast(err.message, 'erro');
   }
@@ -96,7 +106,7 @@ async function regerar(id) {
   try {
     const res = await fetch(`/api/historico/${id}/regerar`, { method: 'POST', cache: 'no-store' });
     await downloadPdfFromResponse(res, `ASO_${id}.pdf`);
-    toast('Data atualizada e riscos recarregados.');
+    toast('Nova versão emitida com os dados atuais.');
     carregarHistorico(document.getElementById('busca').value);
   } catch (err) {
     toast(err.message, 'erro');

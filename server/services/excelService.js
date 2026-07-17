@@ -5,6 +5,7 @@ const { getDataRoot } = require('../paths');
 
 const DB_DIR = path.join(getDataRoot(), 'dados');
 const DB_PATH = path.join(DB_DIR, 'banco.xlsx');
+const BACKUP_DIR = path.join(DB_DIR, 'backups');
 
 const DEFAULT_CONFIG = {
   RazaoSocial: 'CLÍNICA PIERRO LTDA',
@@ -43,11 +44,12 @@ const SCHEMAS = {
   Cargos: ['ID', 'Nome'],
   Riscos: ['ID', 'Grupo', 'Descricao'],
   Cargo_Risco: ['ID', 'CargoID', 'RiscoID'],
+  Cargo_Exame: ['ID', 'CargoID', 'ExameID'],
   Funcionarios: ['ID', 'Nome', 'CPF', 'DataNascimento', 'SetorID', 'CargoID'],
   HistoricoPDF: [
     'ID', 'Nome', 'CPF', 'DataNascimento', 'Cargo', 'Setor',
     'DataGeracao', 'ArquivoPDF', 'TipoExame', 'CargoID', 'SetorID',
-    'Conclusao', 'ExamesDatas', 'DataAvaliacaoClinica', 'RiscosSnapshot'
+    'Conclusao', 'ExamesDatas', 'DataAvaliacaoClinica', 'RiscosSnapshot', 'DocumentoSnapshot'
   ],
   ConfigGeral: [
     'ID', 'RazaoSocial', 'CNPJ', 'Endereco', 'Bairro', 'CidadeUf', 'Cep', 'Telefone',
@@ -143,7 +145,7 @@ async function ensureDb() {
       addSheetWithHeaders(wb, sheetName);
     }
     seedDefaults(wb);
-    await wb.xlsx.writeFile(DB_PATH);
+    await writeWorkbook(wb);
     console.log('Banco de dados criado em', DB_PATH);
     return;
   }
@@ -169,7 +171,7 @@ async function ensureDb() {
     const afterTipos = sheetToObjects(getSheetOrThrow(wb, 'TiposExame'), SCHEMAS.TiposExame).length;
     const afterEx = sheetToObjects(getSheetOrThrow(wb, 'ExamesComplementares'), SCHEMAS.ExamesComplementares).length;
     if (changed || beforeCfg !== afterCfg || beforeTipos !== afterTipos || beforeEx !== afterEx) {
-      await wb.xlsx.writeFile(DB_PATH);
+      await writeWorkbook(wb);
       console.log('Banco migrado/atualizado em', DB_PATH);
     }
   });
@@ -201,7 +203,23 @@ async function readWorkbook() {
 }
 
 async function writeWorkbook(wb) {
-  await wb.xlsx.writeFile(DB_PATH);
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const tempPath = path.join(DB_DIR, `banco.${process.pid}.${stamp}.tmp.xlsx`);
+
+  // O ExcelJS nunca grava diretamente sobre o arquivo em uso: primeiro gera uma
+  // cópia íntegra temporária e só então troca o banco.
+  await wb.xlsx.writeFile(tempPath);
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+      fs.copyFileSync(DB_PATH, path.join(BACKUP_DIR, `banco-${stamp}.xlsx`));
+    }
+    await fs.promises.rename(tempPath, DB_PATH);
+  } catch (err) {
+    // A falha preserva o banco anterior e deixa explícito que a gravação não ocorreu.
+    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    throw err;
+  }
 }
 
 async function getAll(sheetName) {
@@ -305,6 +323,33 @@ async function setRiscosForCargo(cargoId, riscoIds) {
   });
 }
 
+async function getExamesByCargo(cargoId) {
+  const rows = await getAll('Cargo_Exame');
+  return rows.filter(r => String(r.CargoID) === String(cargoId)).map(r => String(r.ExameID));
+}
+
+async function setExamesForCargo(cargoId, exameIds) {
+  return withLock(async () => {
+    const wb = await readWorkbook();
+    const sheet = getSheetOrThrow(wb, 'Cargo_Exame');
+    const headers = SCHEMAS.Cargo_Exame;
+    const existing = sheetToObjects(sheet, headers);
+    const rowsToRemove = existing
+      .filter(r => String(r.CargoID) === String(cargoId))
+      .map(r => r.__rowNumber)
+      .sort((a, b) => b - a);
+    rowsToRemove.forEach(rn => sheet.spliceRows(rn, 1));
+
+    const remaining = sheetToObjects(sheet, headers);
+    let nextId = remaining.reduce((max, r) => Math.max(max, Number(r.ID) || 0), 0) + 1;
+    [...new Set(exameIds.map(String))].forEach(exameId => {
+      sheet.addRow([nextId++, Number(cargoId), Number(exameId)]);
+    });
+    await writeWorkbook(wb);
+    return true;
+  });
+}
+
 async function getConfig() {
   const rows = await getAll('ConfigGeral');
   if (!rows.length) return { ...DEFAULT_CONFIG, ID: 1 };
@@ -348,6 +393,47 @@ async function getExamesComplementares() {
   return rows.sort((a, b) => Number(a.Ordem) - Number(b.Ordem));
 }
 
+async function getUsage(sheetName, id) {
+  const equalsId = (row, field) => String(row[field]) === String(id);
+  const usage = [];
+
+  if (sheetName === 'Setores') {
+    const [funcionarios, historico] = await Promise.all([getAll('Funcionarios'), getAll('HistoricoPDF')]);
+    const funcs = funcionarios.filter(r => equalsId(r, 'SetorID')).length;
+    const hist = historico.filter(r => equalsId(r, 'SetorID')).length;
+    if (funcs) usage.push(`${funcs} funcionário(s)`);
+    if (hist) usage.push(`${hist} registro(s) no histórico`);
+  }
+
+  if (sheetName === 'Cargos') {
+    const [funcionarios, historico, vinculos, examesVinculados] = await Promise.all([
+      getAll('Funcionarios'), getAll('HistoricoPDF'), getAll('Cargo_Risco'), getAll('Cargo_Exame')
+    ]);
+    const funcs = funcionarios.filter(r => equalsId(r, 'CargoID')).length;
+    const hist = historico.filter(r => equalsId(r, 'CargoID')).length;
+    const links = vinculos.filter(r => equalsId(r, 'CargoID')).length;
+    const exames = examesVinculados.filter(r => equalsId(r, 'CargoID')).length;
+    if (funcs) usage.push(`${funcs} funcionário(s)`);
+    if (links) usage.push(`${links} vínculo(s) com riscos`);
+    if (exames) usage.push(`${exames} vínculo(s) com exames`);
+    if (hist) usage.push(`${hist} registro(s) no histórico`);
+  }
+
+  if (sheetName === 'Riscos') {
+    const vinculos = await getAll('Cargo_Risco');
+    const links = vinculos.filter(r => equalsId(r, 'RiscoID')).length;
+    if (links) usage.push(`${links} vínculo(s) com cargos`);
+  }
+
+  if (sheetName === 'ExamesComplementares') {
+    const vinculos = await getAll('Cargo_Exame');
+    const links = vinculos.filter(r => equalsId(r, 'ExameID')).length;
+    if (links) usage.push(`${links} vínculo(s) com cargos`);
+  }
+
+  return usage;
+}
+
 module.exports = {
   DB_PATH,
   DB_DIR,
@@ -361,8 +447,11 @@ module.exports = {
   remove,
   getRiscosByCargo,
   setRiscosForCargo,
+  getExamesByCargo,
+  setExamesForCargo,
   getConfig,
   saveConfig,
   getTiposExame,
-  getExamesComplementares
+  getExamesComplementares,
+  getUsage
 };

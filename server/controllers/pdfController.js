@@ -3,7 +3,7 @@ const customParseFormat = require('dayjs/plugin/customParseFormat');
 dayjs.extend(customParseFormat);
 const db = require('../services/excelService');
 const pdfService = require('../services/pdfService');
-const { formatCpf, isValidCpf } = require('../utils/cpf');
+const { formatCpf, isValidCpf, onlyDigits } = require('../utils/cpf');
 
 async function montarRiscosDoCargo(cargoId) {
   const [riscoIds, todosRiscos] = await Promise.all([
@@ -11,6 +11,15 @@ async function montarRiscosDoCargo(cargoId) {
     db.getAll('Riscos')
   ]);
   return todosRiscos.filter(r => riscoIds.includes(String(r.ID)));
+}
+
+async function montarExamesDoCargo(cargoId) {
+  if (!cargoId) return [];
+  const [exameIds, todosExames] = await Promise.all([
+    db.getExamesByCargo(cargoId),
+    db.getExamesComplementares()
+  ]);
+  return todosExames.filter(exame => exameIds.includes(String(exame.ID)));
 }
 
 function serializarRiscosSnapshot(riscos) {
@@ -29,10 +38,52 @@ function parseRiscosSnapshot(raw) {
   }
 }
 
+function serializarDocumentoSnapshot(ctx, dataDocumento) {
+  return JSON.stringify({
+    versao: 1,
+    dataDocumento: dataDocumento.toISOString(),
+    colaborador: ctx.colaborador,
+    riscos: ctx.riscos,
+    config: ctx.config,
+    tiposExame: ctx.tiposExame,
+    examesComplementares: ctx.examesComplementares,
+    conclusao: ctx.conclusao,
+    examesDatas: ctx.examesDatas,
+    dataAvaliacaoClinica: ctx.dataAvaliacaoClinica
+  });
+}
+
+function parseDocumentoSnapshot(raw) {
+  if (!raw) return null;
+  try {
+    const snapshot = JSON.parse(String(raw));
+    if (!snapshot || !snapshot.colaborador || !Array.isArray(snapshot.riscos) || !snapshot.config) return null;
+    return snapshot;
+  } catch (_) {
+    return null;
+  }
+}
+
 /**
  * Monta contexto do PDF com dados SALVOS no histórico (download "como foi criado").
  */
 async function montarContextoPdfSalvo(registro) {
+  const snapshot = parseDocumentoSnapshot(registro.DocumentoSnapshot);
+  if (snapshot) {
+    return {
+      colaborador: snapshot.colaborador,
+      riscos: snapshot.riscos,
+      config: snapshot.config,
+      tiposExame: snapshot.tiposExame || [],
+      examesComplementares: snapshot.examesComplementares || [],
+      conclusao: snapshot.conclusao || '',
+      examesDatas: snapshot.examesDatas || {},
+      dataAvaliacaoClinica: snapshot.dataAvaliacaoClinica || '',
+      dataDocumento: snapshot.dataDocumento
+    };
+  }
+
+  // Compatibilidade com históricos emitidos antes do snapshot completo.
   const [config, tiposExame, examesComplementares] = await Promise.all([
     db.getConfig(),
     db.getTiposExame(),
@@ -74,7 +125,7 @@ async function montarContextoPdf(registroLike, extras = {}) {
   const [config, tiposExame, examesComplementares, riscos, setor, cargo] = await Promise.all([
     db.getConfig(),
     db.getTiposExame(),
-    db.getExamesComplementares(),
+    montarExamesDoCargo(cargoId),
     montarRiscosDoCargo(cargoId),
     setorId ? db.getById('Setores', setorId) : null,
     cargoId ? db.getById('Cargos', cargoId) : null
@@ -144,7 +195,7 @@ function toInputDate(value) {
 
 function serializarHistorico(registro) {
   if (!registro) return null;
-  const { __rowNumber, ...rest } = registro;
+  const { __rowNumber, DocumentoSnapshot, ...rest } = registro;
   const examesRaw = pdfService.parseExamesDatas(rest.ExamesDatas);
   const examesDatas = {};
   Object.entries(examesRaw).forEach(([k, v]) => {
@@ -179,8 +230,14 @@ async function validarFormularioAso(body) {
   if (!setor) return { erro: 'Setor não encontrado.' };
   if (!cargo) return { erro: 'Cargo não encontrado.' };
 
-  const examesNorm = normalizarExamesDatas(examesDatas);
-  const riscosAtuais = await montarRiscosDoCargo(cargoId);
+  const [riscosAtuais, examesDoCargo] = await Promise.all([
+    montarRiscosDoCargo(cargoId),
+    montarExamesDoCargo(cargoId)
+  ]);
+  const idsPermitidos = new Set(examesDoCargo.map(exame => String(exame.ID)));
+  const examesNorm = Object.fromEntries(
+    Object.entries(normalizarExamesDatas(examesDatas)).filter(([id]) => idsPermitidos.has(String(id)))
+  );
 
   return {
     dadosColaborador: {
@@ -230,7 +287,7 @@ module.exports = {
 
       res.json({
         sucesso: true,
-        mensagem: 'Dados salvos. Use Baixar (data antiga) ou Atualizar (data nova) no histórico para gerar o PDF.',
+        mensagem: 'Dados salvos. Baixar mantém a última versão emitida; use Atualizar para emitir uma nova versão.',
         registro: serializarHistorico(registro)
       });
     } catch (err) {
@@ -258,6 +315,9 @@ module.exports = {
       });
 
       const buffer = await pdfService.gerarAsoPdf({ ...ctx, dataDocumento });
+      await db.update('HistoricoPDF', registro.ID, {
+        DocumentoSnapshot: serializarDocumentoSnapshot(ctx, dataDocumento)
+      });
       const arquivoNome = pdfService.nomeArquivoAso(registro.Nome, dataDocumento);
       enviarPdf(res, buffer, arquivoNome);
     } catch (err) {
@@ -277,21 +337,28 @@ module.exports = {
             String(r.Cargo).toLowerCase().includes(busca) ||
             String(r.Setor).toLowerCase().includes(busca))
         : rows;
-      res.json(filtrado.sort((a, b) => Number(b.ID) - Number(a.ID)));
+      res.json(filtrado.sort((a, b) => {
+        const dataA = dayjs(a.DataGeracao, 'DD/MM/YYYY HH:mm', true).valueOf() || 0;
+        const dataB = dayjs(b.DataGeracao, 'DD/MM/YYYY HH:mm', true).valueOf() || 0;
+        return dataB - dataA || Number(b.ID) - Number(a.ID);
+      }).map(serializarHistorico));
     } catch (err) {
       console.error(err);
       res.status(500).json({ erro: 'Falha ao ler histórico.' });
     }
   },
 
-  // Download: PDF como foi salvo (snapshot de riscos, cargo/setor e data originais)
+  // Download: última versão efetivamente emitida (mantida mesmo após uma edição).
   async download(req, res) {
     try {
       const registro = await db.getById('HistoricoPDF', req.params.id);
       if (!registro) return res.status(404).json({ erro: 'Registro não encontrado.' });
 
       const ctx = await montarContextoPdfSalvo(registro);
-      const dataDoc = dayjs(registro.DataGeracao, 'DD/MM/YYYY HH:mm').isValid()
+      const dataDoSnapshot = ctx.dataDocumento ? dayjs(ctx.dataDocumento) : null;
+      const dataDoc = dataDoSnapshot && dataDoSnapshot.isValid()
+        ? dataDoSnapshot.toDate()
+        : dayjs(registro.DataGeracao, 'DD/MM/YYYY HH:mm').isValid()
         ? dayjs(registro.DataGeracao, 'DD/MM/YYYY HH:mm').toDate()
         : new Date();
 
@@ -304,25 +371,54 @@ module.exports = {
     }
   },
 
-  // Regerar: atualiza data, nomes e snapshot de riscos com relacionamentos atuais
+  // Atualizar cria uma nova emissão e mantém o histórico anterior intacto.
   async regerar(req, res) {
     try {
       const registro = await db.getById('HistoricoPDF', req.params.id);
       if (!registro) return res.status(404).json({ erro: 'Registro não encontrado.' });
 
-      const dataGeracao = new Date();
-      const ctx = await montarContextoPdf(registro);
+      // A nova emissão deve refletir o cadastro atual do funcionário. Isso inclui
+      // setor e cargo, que determinam os relacionamentos de riscos e exames.
+      const funcionarios = await db.getAll('Funcionarios');
+      const funcionarioAtual = funcionarios.find(funcionario =>
+        onlyDigits(funcionario.CPF) === onlyDigits(registro.CPF)
+      );
+      const dadosAtuais = funcionarioAtual ? {
+        ...registro,
+        Nome: funcionarioAtual.Nome,
+        CPF: funcionarioAtual.CPF,
+        DataNascimento: funcionarioAtual.DataNascimento,
+        CargoID: funcionarioAtual.CargoID,
+        SetorID: funcionarioAtual.SetorID
+      } : registro;
 
-      await db.update('HistoricoPDF', req.params.id, {
+      const dataGeracao = new Date();
+      const ctx = await montarContextoPdf(dadosAtuais);
+      const buffer = await pdfService.gerarAsoPdf({ ...ctx, dataDocumento: dataGeracao });
+
+      const idsPermitidos = new Set(ctx.examesComplementares.map(exame => String(exame.ID)));
+      const examesDatas = Object.fromEntries(
+        Object.entries(ctx.examesDatas || {}).filter(([id]) => idsPermitidos.has(String(id)))
+      );
+      await db.insert('HistoricoPDF', {
+        Nome: dadosAtuais.Nome,
+        CPF: dadosAtuais.CPF,
+        DataNascimento: dadosAtuais.DataNascimento,
         DataGeracao: dayjs(dataGeracao).format('DD/MM/YYYY HH:mm'),
         Cargo: ctx.cargoAtual ? ctx.cargoAtual.Nome : registro.Cargo,
         Setor: ctx.setorAtual ? ctx.setorAtual.Nome : registro.Setor,
+        ArquivoPDF: '',
+        TipoExame: registro.TipoExame,
+        CargoID: dadosAtuais.CargoID,
+        SetorID: dadosAtuais.SetorID,
+        Conclusao: registro.Conclusao || '',
+        ExamesDatas: JSON.stringify(examesDatas),
+        DataAvaliacaoClinica: registro.DataAvaliacaoClinica || '',
         RiscosSnapshot: serializarRiscosSnapshot(ctx.riscos),
-        ArquivoPDF: ''
+        DocumentoSnapshot: serializarDocumentoSnapshot({ ...ctx, examesDatas }, dataGeracao)
       });
 
-      const buffer = await pdfService.gerarAsoPdf({ ...ctx, dataDocumento: dataGeracao });
-      const arquivoNome = pdfService.nomeArquivoAso(registro.Nome, dataGeracao);
+      const arquivoNome = pdfService.nomeArquivoAso(dadosAtuais.Nome, dataGeracao);
       enviarPdf(res, buffer, arquivoNome);
     } catch (err) {
       console.error(err);

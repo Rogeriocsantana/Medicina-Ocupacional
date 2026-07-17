@@ -11,6 +11,7 @@
     <span class="material-symbols-outlined">add</span> Adicionar Risco
   </button>
 </div>
+<div id="paginacao-riscos"></div>
 
 <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
   <table class="w-full text-left border-collapse">
@@ -57,6 +58,8 @@
 </div>
 
 <script>
+let paginaRiscos = 1;
+const ITENS_POR_PAGINA = 5;
 const CORES_GRUPO = {
   'Biológico': 'bg-status-biological text-white',
   'Físico': 'bg-status-physical text-white',
@@ -73,7 +76,8 @@ async function carregarRiscos() {
       tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Nenhum risco cadastrado.</td></tr>';
       return;
     }
-    tbody.innerHTML = riscos.map(r => `
+    const pagina = riscos.slice((paginaRiscos - 1) * ITENS_POR_PAGINA, paginaRiscos * ITENS_POR_PAGINA);
+    tbody.innerHTML = pagina.map(r => `
       <tr class="hover:bg-[#EBF2FA] transition-colors group">
         <td class="px-6 py-4 font-table-data text-table-data text-on-surface-variant">#${String(r.ID).padStart(3,'0')}</td>
         <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs font-bold ${CORES_GRUPO[r.Grupo] || 'bg-surface-container-high'}">${r.Grupo}</span></td>
@@ -85,10 +89,12 @@ async function carregarRiscos() {
           </div>
         </td>
       </tr>`).join('');
+    document.getElementById('paginacao-riscos').innerHTML = htmlPaginacao(paginaRiscos, riscos.length, ITENS_POR_PAGINA, 'irPaginaRiscos');
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-error">${err.message}</td></tr>`;
   }
 }
+function irPaginaRiscos(pagina) { if (pagina >= 1) { paginaRiscos = pagina; carregarRiscos(); } }
 
 function abrirModal() {
   document.getElementById('modal-titulo').textContent = 'Adicionar Risco';

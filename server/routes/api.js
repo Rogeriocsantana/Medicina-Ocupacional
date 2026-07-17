@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { makeCrudController } = require('../controllers/crudFactory');
 const cargoRiscoController = require('../controllers/cargoRiscoController');
+const cargoExameController = require('../controllers/cargoExameController');
 const pdfController = require('../controllers/pdfController');
 const dashboardController = require('../controllers/dashboardController');
 const configController = require('../controllers/configController');
@@ -39,6 +40,10 @@ router.delete('/funcionarios/:id', funcionariosController.remover);
 router.get('/cargo-risco/resumo', cargoRiscoController.listarResumo);
 router.get('/cargo-risco/:cargoId', cargoRiscoController.obterPorCargo);
 router.post('/cargo-risco', cargoRiscoController.salvar);
+
+router.get('/cargo-exame/resumo', cargoExameController.listarResumo);
+router.get('/cargo-exame/:cargoId', cargoExameController.obterPorCargo);
+router.post('/cargo-exame', cargoExameController.salvar);
 
 router.post('/gerar-pdf', pdfController.gerar);
 

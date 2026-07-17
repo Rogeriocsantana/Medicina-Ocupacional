@@ -78,6 +78,7 @@ async function start() {
     '/setores': 'setores',
     '/cargos': 'cargos',
     '/riscos': 'riscos',
+    '/exames-complementares': 'exames-complementares',
     '/funcionarios': 'funcionarios',
     '/relacionamento': 'relacionamento',
     '/gerar-pdf': 'gerar-pdf',
