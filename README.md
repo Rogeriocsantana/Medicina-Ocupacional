@@ -10,11 +10,13 @@ Sistema local para clínicas de medicina ocupacional. Centraliza cadastros, rela
 - Relacionamentos por cargo:
   - Cargo × riscos ocupacionais;
   - Cargo × exames complementares.
+- Seleção sincronizada entre as abas de relacionamento, com indicadores e status do cargo ativo.
 - Emissão de ASO em PDF com riscos e exames determinados pelo cargo atual do funcionário.
 - Histórico versionado de ASOs: **Atualizar** cria uma nova emissão e preserva a anterior.
 - Download da última versão efetivamente emitida de cada registro.
 - Backup automático do banco antes de cada gravação.
-- Configurações em abas: clínica, médico, tipos de exame e grupos de risco.
+- Configurações em abas: clínica, médico e tipos de exame.
+- Grupos de risco administrados na própria tela de Riscos, em uma aba dedicada.
 - Nome, especialidade e ícone configurável do médico exibidos no cabeçalho.
 
 ## Tecnologias

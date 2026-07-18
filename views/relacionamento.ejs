@@ -14,10 +14,10 @@
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Cargos mapeados</p><p id="stat-cargos-mapeados" class="text-headline-lg text-primary mt-2">–</p></div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Cargos cadastrados</p><p id="stat-cargos-mapeados" class="text-headline-lg text-primary mt-2">–</p></div>
   <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Riscos vinculados</p><p id="stat-riscos-vinculados" class="text-headline-lg text-primary mt-2">–</p></div>
   <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Exames vinculados</p><p id="stat-exames-vinculados" class="text-headline-lg text-primary mt-2">–</p></div>
-  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Status</p><p class="text-body-lg font-bold text-status-ergonomic mt-2">Em dia</p></div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Status</p><p id="stat-status" class="text-body-lg font-bold mt-2">Carregando...</p></div>
 </div>
 
 <div id="painel-exames" class="hidden grid grid-cols-1 md:grid-cols-3 gap-stack-md">
@@ -71,6 +71,8 @@
 <script>
 let ORDEM_GRUPOS = ['Biológico', 'Físico', 'Químico', 'Ergonômico', 'Acidente'];
 let cargoSelecionadoId = null;
+let cargoAtivoId = null;
+let cargosRiscos = [];
 let todosRiscos = [];
 let cargoExameSelecionadoId = null;
 let cargosExames = [];
@@ -79,6 +81,32 @@ let paginaCargosRiscos = 1;
 let paginaCargosExames = 1;
 const CARGOS_POR_PAGINA = 5;
 let buscaCargoRelacionamento = '';
+
+function obterTotal(lista, id, campo) {
+  const item = lista.find(cargo => String(cargo.ID) === String(id));
+  return Number(item?.[campo] || 0);
+}
+
+function atualizarIndicadores() {
+  const totalCargos = Math.max(cargosRiscos.length, cargosExames.length);
+  const riscos = cargoAtivoId === null
+    ? cargosRiscos.reduce((total, cargo) => total + Number(cargo.totalRiscos || 0), 0)
+    : obterTotal(cargosRiscos, cargoAtivoId, 'totalRiscos');
+  const exames = cargoAtivoId === null
+    ? cargosExames.reduce((total, cargo) => total + Number(cargo.totalExames || 0), 0)
+    : obterTotal(cargosExames, cargoAtivoId, 'totalExames');
+  const pendentes = cargosRiscos.filter(cargo => Number(cargo.totalRiscos || 0) === 0 && obterTotal(cargosExames, cargo.ID, 'totalExames') === 0).length;
+  const status = document.getElementById('stat-status');
+  const emDia = cargoAtivoId === null ? pendentes === 0 : riscos > 0 || exames > 0;
+
+  document.getElementById('stat-cargos-mapeados').textContent = totalCargos;
+  document.getElementById('stat-riscos-vinculados').textContent = riscos;
+  document.getElementById('stat-exames-vinculados').textContent = exames;
+  status.textContent = cargoAtivoId === null
+    ? (emDia ? 'Todos em dia' : `${pendentes} pendente(s)`)
+    : (emDia ? 'Em dia' : 'Pendente');
+  status.className = `text-body-lg font-bold mt-2 ${emDia ? 'text-status-ergonomic' : 'text-error'}`;
+}
 
 function mostrarAba(aba) {
   const riscos = aba === 'riscos';
@@ -92,23 +120,31 @@ function mostrarAba(aba) {
   document.getElementById('aba-exames').className = !riscos
     ? 'px-5 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md'
     : 'px-5 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md';
+
+  if (cargoAtivoId === null) return;
+  if (riscos) {
+    const cargo = cargosRiscos.find(item => String(item.ID) === String(cargoAtivoId));
+    selecionarCargo(cargoAtivoId, cargo ? cargo.Nome : '');
+  } else {
+    selecionarCargoExame(cargoAtivoId);
+  }
 }
 
 async function carregarCargos() {
   const el = document.getElementById('lista-cargos');
   try {
     const resumo = await api('/api/cargo-risco/resumo');
+    cargosRiscos = resumo;
     if (!resumo.length) {
       el.innerHTML = '<div class="px-4 py-4 text-on-surface-variant">Nenhum cargo cadastrado.</div>';
       return;
     }
-    document.getElementById('stat-cargos-mapeados').textContent = resumo.filter(c => c.totalRiscos > 0).length;
-    document.getElementById('stat-riscos-vinculados').textContent = resumo.reduce((total, c) => total + Number(c.totalRiscos || 0), 0);
+    atualizarIndicadores();
     const filtrados = resumo.filter(cargo => String(cargo.Nome || '').toLowerCase().includes(buscaCargoRelacionamento));
     const pagina = filtrados.slice((paginaCargosRiscos - 1) * CARGOS_POR_PAGINA, paginaCargosRiscos * CARGOS_POR_PAGINA);
     el.innerHTML = pagina.map(c => `
       <button onclick="selecionarCargo(${c.ID}, '${c.Nome.replace(/'/g, "\\'")}')" id="cargo-item-${c.ID}"
-        class="w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex justify-between items-center">
+        class="w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex justify-between items-center ${String(c.ID) === String(cargoAtivoId) ? 'bg-secondary-container font-bold' : ''}">
         <span class="font-body-md">${c.Nome}</span>
         <span class="text-xs px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant">${c.totalRiscos} risco(s)</span>
       </button>`).join('');
@@ -121,6 +157,8 @@ function irPaginaCargosRiscos(pagina) { if (pagina >= 1) { paginaCargosRiscos = 
 
 async function selecionarCargo(id, nome) {
   cargoSelecionadoId = id;
+  cargoAtivoId = id;
+  atualizarIndicadores();
   document.querySelectorAll('[id^="cargo-item-"]').forEach(b => b.classList.remove('bg-secondary-container', 'font-bold'));
   const item = document.getElementById(`cargo-item-${id}`);
   if (item) item.classList.add('bg-secondary-container', 'font-bold');
@@ -174,6 +212,7 @@ async function carregarCargosExames() {
   const el = document.getElementById('lista-cargos-exames');
   try {
     cargosExames = await api('/api/cargo-exame/resumo');
+    atualizarIndicadores();
     if (!cargosExames.length) {
       el.innerHTML = '<div class="px-4 py-4 text-on-surface-variant">Nenhum cargo cadastrado.</div>';
       return;
@@ -183,7 +222,7 @@ async function carregarCargosExames() {
     const pagina = filtrados.slice((paginaCargosExames - 1) * CARGOS_POR_PAGINA, paginaCargosExames * CARGOS_POR_PAGINA);
     el.innerHTML = pagina.map(cargo => `
       <button onclick="selecionarCargoExame(${cargo.ID})" id="cargo-exame-item-${cargo.ID}"
-        class="w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex justify-between items-center">
+        class="w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex justify-between items-center ${String(cargo.ID) === String(cargoAtivoId) ? 'bg-secondary-container font-bold' : ''}">
         <span class="font-body-md">${escapeHtml(cargo.Nome)}</span>
         <span class="text-xs px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant">${cargo.totalExames} exame(s)</span>
       </button>`).join('');
@@ -196,6 +235,8 @@ function irPaginaCargosExames(pagina) { if (pagina >= 1) { paginaCargosExames = 
 
 async function selecionarCargoExame(id) {
   cargoExameSelecionadoId = id;
+  cargoAtivoId = id;
+  atualizarIndicadores();
   const cargo = cargosExames.find(item => String(item.ID) === String(id));
   document.querySelectorAll('[id^="cargo-exame-item-"]').forEach(b => b.classList.remove('bg-secondary-container', 'font-bold'));
   const item = document.getElementById(`cargo-exame-item-${id}`);
@@ -215,7 +256,7 @@ async function selecionarCargoExame(id) {
           <input type="checkbox" value="${exame.ID}" class="chk-exame-setor" ${selecionados.has(String(exame.ID)) ? 'checked' : ''}>
           <span class="text-body-md">${escapeHtml(exame.Nome)}</span>
         </label>`).join('')
-      : '<p class="text-on-surface-variant">Nenhum exame complementar cadastrado. Cadastre-o em Configurações.</p>';
+      : '<p class="text-on-surface-variant">Nenhum exame complementar cadastrado. Cadastre-o na tela de Exames Complementares.</p>';
   } catch (err) {
     lista.innerHTML = `<p class="text-error">${escapeHtml(err.message)}</p>`;
   }

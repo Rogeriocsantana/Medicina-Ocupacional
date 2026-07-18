@@ -58,7 +58,7 @@ Riscos e exames complementares são definidos pelo cargo. O setor continua sendo
 
 ### Navegação e cabeçalho
 
-- A navegação lateral contém Dashboard, Setores, Cargos, Funcionários, Riscos, Exames Complementares, Relacionamentos e Histórico.
+- A navegação lateral contém Dashboard, Setores, Cargos, Funcionários, Riscos, Exames, Relacionamentos e Histórico. O título da página de exames permanece **Exames Complementares**.
 - Configurações é acessada pelo ícone de engrenagem no cabeçalho superior, e não pelo menu lateral.
 - O cabeçalho mostra um ícone médico configurável, o nome do médico e sua especialidade. Esses dados vêm de Configurações.
 
@@ -71,7 +71,7 @@ Riscos e exames complementares são definidos pelo cargo. O setor continua sendo
 
 - As telas seguem o mesmo padrão: listagem, pesquisa, inclusão, edição, exclusão e confirmação de ações.
 - Setores e cargos permitem busca por nome; funcionários permitem busca por nome ou CPF.
-- Riscos podem ser filtrados por texto e exibem a cor configurada para o grupo.
+- A tela de Riscos possui as abas **Riscos** e **Grupos de risco**. Nesta segunda aba são administrados nome, cor e ordem dos grupos; a listagem de riscos exibe a cor configurada para cada grupo.
 - Exames complementares possuem cadastro próprio e são vinculados posteriormente na tela de Relacionamentos.
 - As listagens usam paginação de **cinco itens por página**, evitando barras de rolagem internas extensas.
 
@@ -80,7 +80,9 @@ Riscos e exames complementares são definidos pelo cargo. O setor continua sendo
 - Organizada em duas abas: **Cargo × Riscos** e **Cargo × Exames Complementares**.
 - Mostra cards de resumo, busca de cargo ao lado do título e lista de cargos paginada.
 - Cada aba permite selecionar um cargo e marcar/desmarcar os vínculos correspondentes.
-- Os grupos de riscos e suas cores são carregados da configuração, sem depender de grupos fixos na interface.
+- A seleção é compartilhada entre as abas e preservada durante a paginação. Ao trocar de aba, são exibidos os vínculos do mesmo cargo ativo.
+- O total de cargos é fixo; os contadores de riscos e exames passam a mostrar os dados do cargo ativo quando houver seleção. Sem seleção, o status informa quantos cargos não possuem vínculos; com seleção, informa se aquele cargo está **Pendente** ou **Em dia**.
+- Os grupos de riscos e suas cores são carregados da tela de Riscos, sem depender de grupos fixos na interface.
 
 ### Gerar PDF / ASO
 
@@ -99,14 +101,12 @@ Riscos e exames complementares são definidos pelo cargo. O setor continua sendo
 
 ### Configurações
 
-Possui quatro abas:
+Possui três abas:
 
 1. **Dados da clínica**: razão social, CNPJ, contatos e endereço.
 2. **Médico**: nome, CRM, especialidade, RQE e seleção de ícone médico predefinido.
 3. **Tipos de exame**: cadastro, edição e exclusão dos tipos usados na emissão.
-4. **Grupos de risco**: nome, cor em paleta e ordem de exibição.
-
-As ações de exclusão nas tabelas seguem o mesmo padrão visual da tela de Histórico.
+Os grupos de risco são administrados na tela de Riscos. As ações de exclusão nas tabelas seguem o mesmo padrão visual da tela de Histórico.
 
 ## Operação e limites atuais
 
