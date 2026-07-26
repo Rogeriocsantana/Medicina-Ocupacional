@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><%= typeof pageTitle !== 'undefined' ? pageTitle + ' - Clínica Pierro' : 'Clínica Pierro - Gestão Ocupacional' %></title>
+<title><%= typeof pageTitle !== 'undefined' ? pageTitle + ' - Medicina Ocupacional' : 'Página - Medicina Ocupacional' %></title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -63,8 +63,24 @@
 </style>
 <script>
 // ---- Helpers compartilhados (carregados antes de qualquer script de página) ----
-async function api(url, options = {}) {
-  const res = await fetch(url, {
+const APP_CONFIG = Object.freeze({
+  basePath: <%- JSON.stringify(basePath) %>
+});
+const BASE_PATH = APP_CONFIG.basePath;
+
+function appUrl(path = '') {
+  const cleanPath = String(path || '').replace(/^\/+/, '');
+  if (!cleanPath) return BASE_PATH ? `${BASE_PATH}/` : '/';
+  return `${BASE_PATH}/${cleanPath}`;
+}
+
+function apiUrl(path = '') {
+  const cleanPath = String(path || '').replace(/^\/+/, '');
+  return appUrl(cleanPath ? `api/${cleanPath}` : 'api');
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(apiUrl(path), {
     headers: { 'Content-Type': 'application/json' },
     cache: 'no-store',
     ...options

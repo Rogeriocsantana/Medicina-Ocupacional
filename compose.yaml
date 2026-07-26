@@ -1,0 +1,31 @@
+services:
+  app:
+    image: node:22-alpine
+    container_name: medicina-ocupacional
+
+    working_dir: /app
+
+    volumes:
+      - ./:/app
+
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3737
+      TZ: America/Sao_Paulo
+      BASE_PATH: ${BASE_PATH:-}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: medicina_db
+      DB_USER: hst
+      DB_PASSWORD: ${DB_PASSWORD}
+
+    command: npm start
+    restart: unless-stopped
+
+    networks:
+      - infra-net
+
+networks:
+  infra-net:
+    external: true
+    name: infra-net

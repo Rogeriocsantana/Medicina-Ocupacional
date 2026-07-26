@@ -1,10 +1,13 @@
+process.env.TZ = process.env.TZ || 'America/Sao_Paulo';
+
 require('./pkg-shims');
 
 const path = require('path');
 const express = require('express');
 const { exec } = require('child_process');
-const db = require('./services/excelService');
+const db = require('./services/mysqlService');
 const { getResourceRoot, getDataRoot, isPackaged } = require('./paths');
+const { BASE_PATH, baseUrl } = require('./config');
 
 const PORT = process.env.PORT || 3737;
 const HOST = process.env.HOST || '127.0.0.1';
@@ -37,36 +40,39 @@ function waitEnterAndExit(code = 1) {
   }
 }
 
-async function start() {
-  await db.ensureDb();
-
+function createApplication() {
   const app = express();
+  const application = express.Router();
   const resourceRoot = getResourceRoot();
   const dataRoot = getDataRoot();
 
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  app.set('trust proxy', true);
+  application.use(express.json());
+  application.use(express.urlencoded({ extended: true }));
 
   app.set('view engine', 'ejs');
   app.set('views', path.join(resourceRoot, 'views'));
   app.set('etag', false);
 
-  app.use('/public', express.static(path.join(dataRoot, 'public')));
-  app.use('/public', express.static(path.join(resourceRoot, 'public')));
+  app.locals.basePath = BASE_PATH;
+  app.locals.baseUrl = baseUrl;
 
-  app.use('/api', (req, res, next) => {
+  application.use('/public', express.static(path.join(dataRoot, 'public')));
+  application.use('/public', express.static(path.join(resourceRoot, 'public')));
+
+  application.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     next();
   });
-  app.use('/api', require('./routes/api'));
+  application.use('/api', require('./routes/api'));
 
   if (!isPackaged() && process.env.NODE_ENV !== 'production') {
-    app.get('/api/debug/dump', async (req, res) => {
+    application.get('/api/debug/dump', async (req, res) => {
       try {
         const sheets = Object.keys(db.SCHEMAS);
         const dump = {};
         for (const s of sheets) dump[s] = await db.getAll(s);
-        res.json({ caminhoDoArquivo: db.DB_PATH, dados: dump });
+        res.json({ banco: db.DB_DESCRIPTION, dados: dump });
       } catch (err) {
         res.status(500).json({ erro: err.message });
       }
@@ -86,18 +92,35 @@ async function start() {
     '/configuracoes': 'configuracoes'
   };
   Object.entries(pages).forEach(([route, view]) => {
-    app.get(route, (req, res) => {
+    application.get(route, (req, res) => {
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       res.render(view, { active: view });
     });
   });
 
+  if (BASE_PATH) {
+    app.use((req, res, next) => {
+      const pathname = String(req.originalUrl || '').split('?')[0];
+      if (pathname === BASE_PATH) return res.redirect(308, `${BASE_PATH}/`);
+      next();
+    });
+  }
+  app.use(BASE_PATH || '/', application);
+
+  return app;
+}
+
+async function start() {
+  await db.ensureDb();
+  const app = createApplication();
+
   app.listen(PORT, HOST, () => {
-    const url = `http://${HOST}:${PORT}`;
+    const url = `http://${HOST}:${PORT}${baseUrl()}`;
     console.log('==============================================');
     console.log(' Sistema ASO / PCMSO - Clinica Pierro');
     console.log(` Rodando em: ${url}`);
-    console.log(` Banco de dados: ${db.DB_PATH}`);
+    console.log(` Caminho base: ${BASE_PATH || '(raiz)'}`);
+    console.log(` Banco de dados: ${db.DB_DESCRIPTION}`);
     if (isPackaged()) console.log(' Modo: executavel (.exe) - Node embutido');
     console.log('==============================================');
     console.log('');
@@ -109,11 +132,18 @@ async function start() {
   });
 }
 
-start().catch(err => {
-  console.error('');
-  console.error('[ERRO] Falha ao iniciar o sistema:');
-  console.error(err && err.stack ? err.stack : err);
-  console.error('');
-  console.error('Dica: se o antivirius bloqueou, libere o .exe e tente de novo.');
-  waitEnterAndExit(1);
-});
+if (require.main === module) {
+  start().catch(err => {
+    console.error('');
+    console.error('[ERRO] Falha ao iniciar o sistema:');
+    console.error(err && err.stack ? err.stack : err);
+    console.error('');
+    console.error('Dica: se o antivirius bloqueou, libere o .exe e tente de novo.');
+    waitEnterAndExit(1);
+  });
+}
+
+module.exports = {
+  createApplication,
+  start
+};

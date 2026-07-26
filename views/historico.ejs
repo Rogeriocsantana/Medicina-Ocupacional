@@ -55,7 +55,7 @@ async function carregarHistorico(busca = buscaHistoricoAtual) {
   buscaHistoricoAtual = busca;
   const tbody = document.getElementById('tbody-historico');
   try {
-    const rows = await api(`/api/historico?busca=${encodeURIComponent(busca)}`);
+    const rows = await api(`historico?busca=${encodeURIComponent(busca)}`);
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Nenhum ASO encontrado.</td></tr>';
       return;
@@ -94,7 +94,7 @@ function irPaginaHistorico(pagina) { if (pagina >= 1) { paginaHistorico = pagina
 
 async function baixar(id) {
   try {
-    const res = await fetch(`/api/historico/${id}/download`, { cache: 'no-store' });
+    const res = await fetch(apiUrl(`historico/${id}/download`), { cache: 'no-store' });
     await downloadPdfFromResponse(res, `ASO_${id}.pdf`);
     toast('Última versão emitida baixada.');
   } catch (err) {
@@ -104,7 +104,7 @@ async function baixar(id) {
 
 async function regerar(id) {
   try {
-    const res = await fetch(`/api/historico/${id}/regerar`, { method: 'POST', cache: 'no-store' });
+    const res = await fetch(apiUrl(`historico/${id}/regerar`), { method: 'POST', cache: 'no-store' });
     await downloadPdfFromResponse(res, `ASO_${id}.pdf`);
     toast('Nova versão emitida com os dados atuais.');
     carregarHistorico(document.getElementById('busca').value);
@@ -116,7 +116,7 @@ async function regerar(id) {
 async function excluirRegistro(id) {
   if (!confirmarExclusao('Excluir este ASO do histórico?')) return;
   try {
-    await api(`/api/historico/${id}`, { method: 'DELETE' });
+    await api(`historico/${id}`, { method: 'DELETE' });
     toast('Registro excluído.');
     carregarHistorico(document.getElementById('busca').value);
   } catch (err) {

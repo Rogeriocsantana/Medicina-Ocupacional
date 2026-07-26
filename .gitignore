@@ -2,3 +2,4 @@ node_modules/
 dados/
 dist/
 npm-debug.log
+.env

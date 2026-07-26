@@ -1,76 +1,190 @@
 # Gestão Ocupacional — ASO / PCMSO
 
-Sistema local para clínicas de medicina ocupacional. Centraliza cadastros, relacionamentos por cargo e emissão de ASOs em PDF, com dados persistidos em Excel.
+Sistema para clínicas de medicina ocupacional. Centraliza cadastros, relacionamentos por cargo e emissão de ASOs em PDF, mantendo os dados em MySQL.
 
-## Principais recursos
+## Recursos principais
 
 - Dashboard com indicadores e últimos ASOs emitidos.
-- Cadastro de setores, cargos, funcionários, riscos, exames complementares e grupos de risco.
-- Busca e paginação com cinco registros por página nas listas administrativas.
-- Relacionamentos por cargo:
-  - Cargo × riscos ocupacionais;
-  - Cargo × exames complementares.
+- Cadastros de empresas, setores, cargos, funcionários, riscos, exames e grupos de risco.
+- Busca e paginação de cinco registros por página nas listas administrativas.
+- Relacionamentos por cargo: **Cargo × Riscos** e **Cargo × Exames**.
 - Seleção sincronizada entre as abas de relacionamento, com indicadores e status do cargo ativo.
-- Emissão de ASO em PDF com riscos e exames determinados pelo cargo atual do funcionário.
-- Histórico versionado de ASOs: **Atualizar** cria uma nova emissão e preserva a anterior.
-- Download da última versão efetivamente emitida de cada registro.
-- Backup automático do banco antes de cada gravação.
-- Configurações em abas: clínica, médico e tipos de exame.
-- Grupos de risco administrados na própria tela de Riscos, em uma aba dedicada.
-- Nome, especialidade e ícone configurável do médico exibidos no cabeçalho.
+- Geração de ASO em PDF com riscos e exames definidos pelo cargo atual do funcionário.
+- Histórico versionado: **Atualizar** cria uma nova emissão com empresa, cargo e setor atuais, preservando a anterior.
+- Download baseado no snapshot armazenado na última emissão do registro.
+- Persistência relacional no MySQL, com integridade por chaves estrangeiras.
+- Cadastro de múltiplas empresas e seleção da empresa no funcionário.
+- Configuração independente dos dados do médico coordenador.
+- Cadastro nas abas **Tipos de Exames** e **Exames Complementares** da tela Exames.
+- Administração de grupos de risco na própria tela de Riscos.
+- Funcionamento na raiz do domínio ou em qualquer subdiretório por meio de `BASE_PATH`.
+- Compatibilidade com Docker e Nginx Reverse Proxy.
+- Datas geradas no fuso horário `America/Sao_Paulo`.
 
 ## Tecnologias
 
-- Node.js e Express
+- Node.js + Express
 - EJS
-- ExcelJS
+- MySQL 8 + mysql2
+- ExcelJS para futura importação de planilhas
 - PDFKit
 - Tailwind CSS
+- Docker Compose
+- Nginx como proxy reverso na infraestrutura compartilhada
 
-## Execução local
+## Arquitetura atual
 
-1. Instale o [Node.js LTS](https://nodejs.org/).
-2. Instale as dependências:
+```text
+Navegador
+   │
+   ├── acesso direto em desenvolvimento: Node :3737
+   │
+   └── produção: Nginx /medicina/
+                         │
+                         ▼
+                  Node.js + Express + EJS
+                         │
+                         ▼
+                  MySQL 8 — medicina_db
+```
+
+O frontend e a API fazem parte da mesma aplicação. Quando `BASE_PATH=/medicina`,
+os endereços são montados automaticamente:
+
+```text
+/medicina/                       Interface
+/medicina/api/...               API
+/medicina/public/...            Recursos estáticos
+```
+
+## Como executar
+
+### Pré-requisitos
+
+- Docker e Docker Compose para a execução na infraestrutura atual.
+- MySQL 8 disponível na rede Docker `infra-net`.
+- Node.js LTS somente para execução direta ou desenvolvimento fora do contêiner.
+- Git, caso o projeto seja obtido por repositório.
+
+### Instalação
 
 ```bash
+git clone <URL_DO_REPOSITORIO>
+cd Medicina-Ocupacional
 npm install
 ```
 
-3. Inicie a aplicação:
+Copie `.env.example` para `.env` e defina, no mínimo:
+
+```env
+DB_PASSWORD=senha_do_usuario_mysql
+BASE_PATH=/medicina
+```
+
+Use `BASE_PATH=` para publicar na raiz.
+
+### Preparar o banco
+
+O banco operacional é `medicina_db`. Em uma instalação nova, execute
+[database/mysql-schema.sql](database/mysql-schema.sql) pelo MySQL ou phpMyAdmin.
+As alterações posteriores ficam registradas em `database/migrations/` e na
+tabela técnica `schema_migrations`.
+
+O esquema contém as tabelas de:
+
+- empresas, setores, cargos e funcionários;
+- grupos de risco e riscos;
+- tipos de exame e exames complementares;
+- vínculos `cargo_risco` e `cargo_exame`;
+- configuração geral;
+- histórico versionado de ASOs.
+
+O banco é criado sem dados de demonstração. O arquivo `dados/banco.xlsx` é
+legado e será utilizado somente como fonte da futura importação dos dados reais.
+
+### Iniciar com Docker
+
+O `compose.yaml` utiliza o contêiner `node:22-alpine`, conecta a aplicação à
+rede externa `infra-net` e acessa o MySQL pelo hostname `mysql`.
+
+```bash
+docker compose up -d
+```
+
+Depois de alterações somente no código:
+
+```bash
+docker compose restart
+```
+
+Se o Compose ou as variáveis do contêiner forem alterados, recrie o serviço:
+
+```bash
+docker compose up -d --force-recreate
+```
+
+Com `BASE_PATH=/medicina`, o acesso direto para diagnóstico é:
+
+```text
+http://127.0.0.1:3737/medicina/
+```
+
+### Iniciar diretamente com Node
+
+Com um MySQL acessível pelas variáveis `DB_HOST`, `DB_PORT`, `DB_NAME`,
+`DB_USER` e `DB_PASSWORD`:
 
 ```bash
 npm start
 ```
 
-4. Acesse `http://127.0.0.1:3737`.
+No Windows, também é possível iniciar pelo arquivo `Iniciar_Sistema.bat`.
 
-No Windows, também é possível executar `Iniciar_Sistema.bat`.
+## Para a equipe
 
-## Executável Windows
-
-```bash
-npm run build:win
-```
-
-O executável é gerado em `dist/ASO-PCMSO-ClinicaPierro.exe`.
-
-## Dados, migração e backup
-
-O banco é criado ou migrado automaticamente na inicialização:
+Na infraestrutura atual, a conexão utiliza:
 
 ```text
-dados/banco.xlsx
+Host: mysql
+Porta: 3306
+Banco: medicina_db
+Usuário: hst
+Fuso horário: America/Sao_Paulo
 ```
 
-Antes de cada gravação, uma cópia é salva em:
+O arquivo `.env` não é versionado. Nunca grave senhas diretamente no código,
+no `compose.yaml` ou na documentação.
+
+### Caminho base e proxy reverso
+
+A variável `BASE_PATH` define se a aplicação será publicada na raiz ou em um
+subdiretório, sem alteração ou recompilação do código:
+
+```env
+BASE_PATH=
+```
+
+ou:
+
+```env
+BASE_PATH=/medicina
+```
+
+Páginas, API, imagens, navegação e downloads são montados automaticamente a
+partir dessa configuração central. A mesma versão funciona em:
 
 ```text
-dados/backups/
+http://localhost/
+http://localhost/medicina/
+http://192.168.5.102/medicina/
+https://empresa.com/sistemas/medicina/
 ```
 
-Não mantenha `banco.xlsx` aberto no Excel enquanto o sistema estiver em execução.
+Somente a variável de ambiente muda; não é necessário alterar nem recompilar o
+código. Consulte [Publicação em subdiretório com Nginx](docs/NGINX_REVERSE_PROXY.md)
+para os exemplos completos.
 
-## Regras principais
+## Regras de negócio
 
 ```text
 Cargo
@@ -78,34 +192,56 @@ Cargo
  └── Exames complementares
 ```
 
-- Riscos e exames do ASO são carregados pelo cargo atual.
-- Ao atualizar um ASO no histórico, o sistema consulta o cadastro atual do funcionário pelo CPF e cria uma nova emissão.
-- Setores, cargos, riscos e exames com vínculos não podem ser excluídos.
+- Riscos e exames do ASO são carregados pelo cargo atual do funcionário.
+- Cada funcionário pertence a uma empresa cadastrada, cujos dados são usados no cabeçalho do ASO.
+- Ao atualizar um ASO no histórico, o sistema busca o funcionário pelo CPF e cria outra emissão com a empresa, o cargo, o setor e os vínculos atuais.
+- A emissão salva os dados necessários no histórico; alterações posteriores nos cadastros não modificam o PDF já emitido.
+- Setores, cargos, riscos e exames com vínculos ativos não podem ser excluídos.
 - Grupos de risco possuem nome, cor e ordem configuráveis.
-
-## Estrutura
-
-```text
-dados/                    Banco Excel e backups
-docs/                     Arquitetura, requisitos e regras de interface
-public/images/            Logotipos locais
-server/                   API, controllers e serviços
-views/                    Telas EJS
-dist/                     Executável gerado
-```
+- Sem cargo selecionado, o status dos relacionamentos informa a quantidade de cargos pendentes; com um cargo selecionado, informa a situação dele.
+- Um cargo pode permanecer sem riscos ou exames; o sistema não utiliza vínculos do setor como alternativa.
 
 ## Scripts
 
 | Comando | Descrição |
-|---|---|
+| --- | --- |
 | `npm start` | Inicia a aplicação. |
-| `npm run seed` | Redefine dados de teste. Não utilizar em produção. |
+| `npm run db:check` | Valida a conexão e a estrutura do MySQL. |
 | `npm run build:win` | Gera o executável Windows. |
+
+## Gerar executável Windows
+
+```bash
+npm run build:win
+```
+
+O executável será gerado em `dist/ASO-PCMSO-ClinicaPierro.exe`.
+
+## Estrutura do projeto
+
+```text
+database/                 Migrações e esquema do MySQL
+dados/                    Banco Excel legado (não operacional)
+docs/                     Arquitetura e requisitos
+public/                   Arquivos estáticos e imagens
+server/                   Configuração, rotas, controllers e serviços
+views/                    Telas EJS
+dist/                     Executável gerado (não versionado)
+```
 
 ## Documentação
 
-Consulte [Arquitetura e Requisitos](docs/ARQUITETURA_E_REQUISITOS.md) para o detalhamento das telas, dados e fluxos.
+- [Arquitetura e Requisitos](docs/ARQUITETURA_E_REQUISITOS.md)
+- [Publicação em subdiretório com Nginx](docs/NGINX_REVERSE_PROXY.md)
 
-## Privacidade
+## Privacidade e segurança
 
-O sistema trata dados pessoais e ocupacionais. Proteja o computador, restrinja o acesso à pasta `dados/` e mantenha backups em local seguro.
+O sistema trata dados pessoais e ocupacionais. Restrinja o acesso à aplicação e
+ao MySQL, mantenha o banco fora da internet pública e utilize HTTPS no proxy.
+Implemente uma rotina externa de backup do MySQL e teste periodicamente a
+restauração. Não envie bancos, planilhas ou PDFs por canais públicos.
+
+O sistema ainda não possui autenticação de usuários. Antes de disponibilizá-lo
+fora da rede controlada do hospital, devem ser implementados autenticação,
+perfis de acesso e registro de auditoria.
+

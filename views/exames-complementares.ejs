@@ -1,19 +1,25 @@
-<% const pageTitle = 'Exames Complementares'; %>
+<% const pageTitle = 'Exames'; %>
 <%- include('partials/head', {pageTitle}) %>
 <%- include('partials/nav', {pageTitle, active: 'exames-complementares'}) %>
 
-<div class="flex justify-between items-end mb-stack-lg">
-  <div>
-    <h3 class="font-headline-lg text-headline-lg text-on-surface">Exames Complementares</h3>
-    <p class="text-on-surface-variant font-body-md text-body-md mt-1">Cadastre os exames que poderão ser vinculados aos cargos.</p>
+<div class="mb-stack-lg">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h3 class="font-headline-lg text-headline-lg text-on-surface">Exames</h3>
+      <p class="text-on-surface-variant font-body-md text-body-md mt-1">Administre os tipos de exames utilizados na emissão do ASO e os exames complementares vinculados aos cargos.</p>
+    </div>
+    <button id="botao-adicionar-tipo" onclick="abrirModalTipo()" class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"><span class="material-symbols-outlined">add</span> Adicionar Tipo</button>
+    <button id="botao-adicionar-complementar" onclick="abrirModal()" class="hidden bg-primary text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"><span class="material-symbols-outlined">add</span> Adicionar Exame</button>
   </div>
-  <button class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm" onclick="abrirModal()">
-    <span class="material-symbols-outlined">add</span> Adicionar Exame
-  </button>
+  <div class="inline-flex flex-wrap mt-5 bg-surface-container p-1 rounded-xl border border-border-subtle gap-1">
+    <button onclick="mostrarAbaExames('tipos')" data-aba="tipos" class="aba-exames px-4 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md">Tipos de Exames</button>
+    <button onclick="mostrarAbaExames('complementares')" data-aba="complementares" class="aba-exames px-4 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md">Exames Complementares</button>
+  </div>
 </div>
-<div id="paginacao-exames"></div>
 
-<div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+<section id="painel-complementares" class="painel-exames hidden space-y-2">
+  <div id="paginacao-exames"></div>
+  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
   <table class="w-full text-left border-collapse">
     <thead class="bg-background-main border-b border-border-subtle">
       <tr>
@@ -27,7 +33,15 @@
       <tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
     </tbody>
   </table>
-</div>
+  </div>
+</section>
+
+<section id="painel-tipos" class="painel-exames space-y-2">
+  <div id="paginacao-tipos"></div>
+  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+    <table class="w-full text-left"><thead class="bg-background-main border-b border-border-subtle"><tr><th class="px-6 py-4 text-label-caps uppercase">Ordem</th><th class="px-6 py-4 text-label-caps uppercase">Chave</th><th class="px-6 py-4 text-label-caps uppercase">Nome</th><th class="px-6 py-4 text-right text-label-caps uppercase">Ações</th></tr></thead><tbody id="tbody-tipos"></tbody></table>
+  </div>
+</section>
 
 <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
   <div class="bg-surface rounded-xl w-full max-w-md p-6">
@@ -50,13 +64,35 @@
   </div>
 </div>
 
+<div id="modal-tipo" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
+  <div class="bg-surface rounded-xl w-full max-w-md p-6">
+    <h3 id="modal-tipo-titulo" class="font-headline-md mb-4">Tipo de Exame</h3>
+    <form id="form-tipo" class="space-y-4">
+      <input type="hidden" id="tipo-id">
+      <div><label class="block font-semibold mb-1">Chave</label><input id="tipo-chave" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary"></div>
+      <div><label class="block font-semibold mb-1">Nome</label><input id="tipo-nome" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary"></div>
+      <div><label class="block font-semibold mb-1">Ordem</label><input id="tipo-ordem" type="number" min="1" required value="1" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary"></div>
+      <div class="flex justify-end gap-3"><button type="button" onclick="fecharModalTipo()" class="px-4 py-2">Cancelar</button><button class="px-4 py-2 bg-primary text-white rounded-lg font-bold">Salvar</button></div>
+    </form>
+  </div>
+</div>
+
 <script>
 let paginaExames = 1;
+let paginaTipos = 1;
 const ITENS_POR_PAGINA = 5;
+function mostrarAbaExames(aba) {
+  document.querySelectorAll('.painel-exames').forEach(p => p.classList.toggle('hidden', p.id !== `painel-${aba}`));
+  document.querySelectorAll('.aba-exames').forEach(b => {
+    b.className = `aba-exames px-4 py-2 rounded-lg text-body-md ${b.dataset.aba === aba ? 'bg-surface text-primary font-bold shadow-sm' : 'text-on-surface-variant font-semibold'}`;
+  });
+  document.getElementById('botao-adicionar-tipo').classList.toggle('hidden', aba !== 'tipos');
+  document.getElementById('botao-adicionar-complementar').classList.toggle('hidden', aba !== 'complementares');
+}
 async function carregarExames() {
   const tbody = document.getElementById('tbody-exames');
   try {
-    const exames = await api('/api/exames-complementares');
+    const exames = await api('exames-complementares');
     if (!exames.length) {
       tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Nenhum exame complementar cadastrado.</td></tr>';
       return;
@@ -110,8 +146,8 @@ document.getElementById('form-exame').addEventListener('submit', async (e) => {
     Ordem: Number(document.getElementById('exame-ordem').value) || 1
   };
   try {
-    if (id) await api(`/api/exames-complementares/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-    else await api('/api/exames-complementares', { method: 'POST', body: JSON.stringify(payload) });
+    if (id) await api(`exames-complementares/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    else await api('exames-complementares', { method: 'POST', body: JSON.stringify(payload) });
     fecharModal();
     toast('Exame complementar salvo.');
     carregarExames();
@@ -123,7 +159,7 @@ document.getElementById('form-exame').addEventListener('submit', async (e) => {
 async function excluir(id) {
   if (!confirmarExclusao('Excluir este exame complementar? Remova antes os vínculos com cargos.')) return;
   try {
-    await api(`/api/exames-complementares/${id}`, { method: 'DELETE' });
+    await api(`exames-complementares/${id}`, { method: 'DELETE' });
     toast('Exame complementar excluído.');
     carregarExames();
   } catch (err) {
@@ -131,7 +167,70 @@ async function excluir(id) {
   }
 }
 
-carregarExames();
+async function carregarTipos() {
+  const tbody = document.getElementById('tbody-tipos');
+  try {
+    const tipos = await api('tipos-exame');
+    if (!tipos.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Nenhum tipo cadastrado.</td></tr>';
+      document.getElementById('paginacao-tipos').innerHTML = '';
+      return;
+    }
+    const pagina = tipos.slice((paginaTipos - 1) * ITENS_POR_PAGINA, paginaTipos * ITENS_POR_PAGINA);
+    tbody.innerHTML = pagina.map(tipo => `
+      <tr class="border-b border-border-subtle hover:bg-[#EBF2FA] transition-colors group">
+        <td class="px-6 py-4">${escapeHtml(tipo.Ordem)}</td>
+        <td class="px-6 py-4">${escapeHtml(tipo.Chave)}</td>
+        <td class="px-6 py-4">${escapeHtml(tipo.Nome)}</td>
+        <td class="px-6 py-4 text-right">
+          <button onclick='abrirModalTipo(${JSON.stringify(tipo).replace(/'/g, "&#39;")})' class="p-2 text-primary hover:bg-primary-fixed rounded" title="Editar"><span class="material-symbols-outlined">edit</span></button>
+          <button onclick="excluirTipo(${tipo.ID})" class="p-2 text-error hover:bg-error-container rounded" title="Excluir"><span class="material-symbols-outlined">delete</span></button>
+        </td>
+      </tr>`).join('');
+    document.getElementById('paginacao-tipos').innerHTML = htmlPaginacao(paginaTipos, tipos.length, ITENS_POR_PAGINA, 'irPaginaTipos');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-error">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+function irPaginaTipos(pagina) { if (pagina >= 1) { paginaTipos = pagina; carregarTipos(); } }
+function abrirModalTipo(tipo) {
+  document.getElementById('modal-tipo').classList.replace('hidden', 'flex');
+  document.getElementById('modal-tipo-titulo').textContent = tipo ? 'Editar tipo de exame' : 'Novo tipo de exame';
+  document.getElementById('tipo-id').value = tipo?.ID || '';
+  document.getElementById('tipo-chave').value = tipo?.Chave || '';
+  document.getElementById('tipo-nome').value = tipo?.Nome || '';
+  document.getElementById('tipo-ordem').value = tipo?.Ordem || 1;
+}
+function fecharModalTipo() { document.getElementById('modal-tipo').classList.replace('flex', 'hidden'); }
+document.getElementById('form-tipo').addEventListener('submit', async e => {
+  e.preventDefault();
+  const id = document.getElementById('tipo-id').value;
+  const payload = {
+    Chave: document.getElementById('tipo-chave').value.trim().toLowerCase().replace(/\s+/g, '_'),
+    Nome: document.getElementById('tipo-nome').value.trim(),
+    Ordem: Number(document.getElementById('tipo-ordem').value) || 1
+  };
+  try {
+    await api(id ? `tipos-exame/${id}` : 'tipos-exame', { method: id ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+    fecharModalTipo();
+    carregarTipos();
+    toast('Tipo de exame salvo.');
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+});
+async function excluirTipo(id) {
+  if (!confirmarExclusao('Excluir este tipo de exame?')) return;
+  try {
+    await api(`tipos-exame/${id}`, { method: 'DELETE' });
+    carregarTipos();
+    toast('Tipo de exame excluído.');
+  } catch (err) {
+    toast(err.message, 'erro');
+  }
+}
+
+Promise.all([carregarExames(), carregarTipos()]).catch(err => toast(err.message, 'erro'));
 </script>
 
 <%- include('partials/foot') %>

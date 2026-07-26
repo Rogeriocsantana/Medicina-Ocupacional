@@ -24,7 +24,7 @@
 <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
   <div class="px-6 py-4 border-b border-border-subtle flex justify-between items-center">
     <h3 class="font-headline-md text-headline-md">Últimos ASOs gerados</h3>
-    <a href="/historico" class="text-primary font-body-md text-body-md font-semibold">Ver histórico completo →</a>
+    <a href="<%= baseUrl('historico') %>" class="text-primary font-body-md text-body-md font-semibold">Ver histórico completo →</a>
   </div>
   <table class="w-full text-left border-collapse">
     <thead class="bg-background-main border-b border-border-subtle">
@@ -44,7 +44,7 @@
 <script>
 async function carregarDashboard() {
   try {
-    const stats = await api('/api/dashboard/stats');
+    const stats = await api('dashboard/stats');
     document.getElementById('stat-setores').textContent = stats.totalSetores;
     document.getElementById('stat-cargos').textContent = stats.totalCargos;
     document.getElementById('stat-riscos').textContent = stats.totalRiscos;

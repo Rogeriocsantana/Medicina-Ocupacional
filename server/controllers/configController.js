@@ -1,9 +1,14 @@
-const db = require('../services/excelService');
+const db = require('../services/mysqlService');
 const { makeCrudController } = require('./crudFactory');
 
 const tiposCtrl = makeCrudController('TiposExame', ['Chave', 'Nome', 'Ordem']);
 const examesCtrl = makeCrudController('ExamesComplementares', ['Nome', 'Ordem']);
 const gruposCtrl = makeCrudController('GruposRisco', ['Nome', 'Cor', 'Ordem']);
+const empresasCtrl = makeCrudController(
+  'Empresas',
+  ['RazaoSocial', 'CNPJ', 'Endereco', 'Bairro', 'CidadeUf', 'Cep', 'Telefone'],
+  ['RazaoSocial', 'CNPJ']
+);
 
 module.exports = {
   async obterConfig(req, res) {
@@ -26,8 +31,8 @@ module.exports = {
       campos.forEach(c => {
         if (req.body[c] !== undefined) data[c] = String(req.body[c]).trim();
       });
-      if (!data.RazaoSocial || !data.CNPJ || !data.Medico) {
-        return res.status(400).json({ erro: 'Razão Social, CNPJ e Médico são obrigatórios.' });
+      if (!data.Medico) {
+        return res.status(400).json({ erro: 'Médico é obrigatório.' });
       }
       const saved = await db.saveConfig(data);
       res.json(saved);
@@ -66,5 +71,6 @@ module.exports = {
 
   tipos: tiposCtrl,
   exames: examesCtrl,
-  grupos: gruposCtrl
+  grupos: gruposCtrl,
+  empresas: empresasCtrl
 };

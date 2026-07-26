@@ -1,7 +1,7 @@
 const dayjs = require('dayjs');
 const customParseFormat = require('dayjs/plugin/customParseFormat');
 dayjs.extend(customParseFormat);
-const db = require('../services/excelService');
+const db = require('../services/mysqlService');
 const pdfService = require('../services/pdfService');
 const { formatCpf, isValidCpf, onlyDigits } = require('../utils/cpf');
 
@@ -84,11 +84,13 @@ async function montarContextoPdfSalvo(registro) {
   }
 
   // Compatibilidade com históricos emitidos antes do snapshot completo.
-  const [config, tiposExame, examesComplementares] = await Promise.all([
+  const [configBase, tiposExame, examesComplementares, empresa] = await Promise.all([
     db.getConfig(),
     db.getTiposExame(),
-    db.getExamesComplementares()
+    db.getExamesComplementares(),
+    registro.EmpresaID ? db.getById('Empresas', registro.EmpresaID) : null
   ]);
+  const config = { ...configBase, ...(empresa || {}) };
 
   let riscos = parseRiscosSnapshot(registro.RiscosSnapshot);
   if (!riscos.length && registro.CargoID) {
@@ -121,15 +123,18 @@ async function montarContextoPdfSalvo(registro) {
 async function montarContextoPdf(registroLike, extras = {}) {
   const cargoId = registroLike.CargoID || registroLike.cargoId;
   const setorId = registroLike.SetorID || registroLike.setorId;
+  const empresaId = registroLike.EmpresaID || registroLike.empresaId;
 
-  const [config, tiposExame, examesComplementares, riscos, setor, cargo] = await Promise.all([
+  const [configBase, tiposExame, examesComplementares, riscos, setor, cargo, empresa] = await Promise.all([
     db.getConfig(),
     db.getTiposExame(),
     montarExamesDoCargo(cargoId),
     montarRiscosDoCargo(cargoId),
     setorId ? db.getById('Setores', setorId) : null,
-    cargoId ? db.getById('Cargos', cargoId) : null
+    cargoId ? db.getById('Cargos', cargoId) : null,
+    empresaId ? db.getById('Empresas', empresaId) : null
   ]);
+  const config = { ...configBase, ...(empresa || {}) };
 
   const examesDatas = extras.examesDatas !== undefined
     ? extras.examesDatas
@@ -160,7 +165,8 @@ async function montarContextoPdf(registroLike, extras = {}) {
     examesDatas,
     dataAvaliacaoClinica,
     setorAtual: setor,
-    cargoAtual: cargo
+    cargoAtual: cargo,
+    empresaAtual: empresa
   };
 }
 
@@ -212,23 +218,25 @@ function serializarHistorico(registro) {
 
 async function validarFormularioAso(body) {
   const {
-    nome, cpf, dataNascimento, setorId, cargoId, tipoExame,
+    nome, cpf, dataNascimento, setorId, cargoId, empresaId, tipoExame,
     conclusao, examesDatas, dataAvaliacaoClinica
   } = body;
 
-  if (!nome || !cpf || !dataNascimento || !setorId || !cargoId) {
-    return { erro: 'Nome, CPF, Data de Nascimento, Setor e Cargo são obrigatórios.' };
+  if (!nome || !cpf || !dataNascimento || !setorId || !cargoId || !empresaId) {
+    return { erro: 'Nome, CPF, Data de Nascimento, Empresa, Setor e Cargo são obrigatórios.' };
   }
   if (!isValidCpf(cpf)) {
     return { erro: 'CPF inválido.' };
   }
 
-  const [setor, cargo] = await Promise.all([
+  const [setor, cargo, empresa] = await Promise.all([
     db.getById('Setores', setorId),
-    db.getById('Cargos', cargoId)
+    db.getById('Cargos', cargoId),
+    db.getById('Empresas', empresaId)
   ]);
   if (!setor) return { erro: 'Setor não encontrado.' };
   if (!cargo) return { erro: 'Cargo não encontrado.' };
+  if (!empresa) return { erro: 'Empresa não encontrada.' };
 
   const [riscosAtuais, examesDoCargo] = await Promise.all([
     montarRiscosDoCargo(cargoId),
@@ -250,6 +258,8 @@ async function validarFormularioAso(body) {
       TipoExame: tipoExame || 'admissional',
       CargoID: cargoId,
       SetorID: setorId,
+      EmpresaID: empresaId,
+      Empresa: empresa.RazaoSocial,
       Conclusao: conclusao || '',
       ExamesDatas: JSON.stringify(examesNorm),
       DataAvaliacaoClinica: dataAvaliacaoClinica || ''
@@ -389,7 +399,8 @@ module.exports = {
         CPF: funcionarioAtual.CPF,
         DataNascimento: funcionarioAtual.DataNascimento,
         CargoID: funcionarioAtual.CargoID,
-        SetorID: funcionarioAtual.SetorID
+        SetorID: funcionarioAtual.SetorID,
+        EmpresaID: funcionarioAtual.EmpresaID
       } : registro;
 
       const dataGeracao = new Date();
@@ -411,6 +422,8 @@ module.exports = {
         TipoExame: registro.TipoExame,
         CargoID: dadosAtuais.CargoID,
         SetorID: dadosAtuais.SetorID,
+        EmpresaID: dadosAtuais.EmpresaID,
+        Empresa: ctx.empresaAtual ? ctx.empresaAtual.RazaoSocial : registro.Empresa,
         Conclusao: registro.Conclusao || '',
         ExamesDatas: JSON.stringify(examesDatas),
         DataAvaliacaoClinica: registro.DataAvaliacaoClinica || '',

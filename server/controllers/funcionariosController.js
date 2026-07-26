@@ -1,7 +1,7 @@
 const dayjs = require('dayjs');
 const customParseFormat = require('dayjs/plugin/customParseFormat');
 dayjs.extend(customParseFormat);
-const db = require('../services/excelService');
+const db = require('../services/mysqlService');
 const { formatCpf, isValidCpf, onlyDigits } = require('../utils/cpf');
 
 function toInputDate(value) {
@@ -24,18 +24,21 @@ function serializarFuncionario(row) {
 }
 
 async function enrichWithNames(rows) {
-  const [setores, cargos] = await Promise.all([
+  const [setores, cargos, empresas] = await Promise.all([
     db.getAll('Setores'),
-    db.getAll('Cargos')
+    db.getAll('Cargos'),
+    db.getAll('Empresas')
   ]);
   const setorMap = Object.fromEntries(setores.map(s => [String(s.ID), s.Nome]));
   const cargoMap = Object.fromEntries(cargos.map(c => [String(c.ID), c.Nome]));
+  const empresaMap = Object.fromEntries(empresas.map(e => [String(e.ID), e.RazaoSocial]));
   return rows.map(r => {
     const base = serializarFuncionario(r);
     return {
       ...base,
       SetorNome: setorMap[String(r.SetorID)] || '',
-      CargoNome: cargoMap[String(r.CargoID)] || ''
+      CargoNome: cargoMap[String(r.CargoID)] || '',
+      EmpresaNome: empresaMap[String(r.EmpresaID)] || ''
     };
   });
 }
@@ -49,13 +52,14 @@ async function cpfEmUso(cpf, ignoreId = null) {
 }
 
 function validarPayload(body, isUpdate = false) {
-  const { Nome, CPF, DataNascimento, SetorID, CargoID } = body;
+  const { Nome, CPF, DataNascimento, SetorID, CargoID, EmpresaID } = body;
   if (!Nome || !String(Nome).trim()) return 'Nome é obrigatório.';
   if (!CPF) return 'CPF é obrigatório.';
   if (!isValidCpf(CPF)) return 'CPF inválido.';
   if (!DataNascimento) return 'Data de nascimento é obrigatória.';
   if (!SetorID) return 'Setor é obrigatório.';
   if (!CargoID) return 'Cargo é obrigatório.';
+  if (!EmpresaID) return 'Empresa é obrigatória.';
   return null;
 }
 
@@ -104,19 +108,22 @@ module.exports = {
         return res.status(400).json({ erro: 'Já existe um funcionário com este CPF.' });
       }
 
-      const [setor, cargo] = await Promise.all([
+      const [setor, cargo, empresa] = await Promise.all([
         db.getById('Setores', req.body.SetorID),
-        db.getById('Cargos', req.body.CargoID)
+        db.getById('Cargos', req.body.CargoID),
+        db.getById('Empresas', req.body.EmpresaID)
       ]);
       if (!setor) return res.status(400).json({ erro: 'Setor não encontrado.' });
       if (!cargo) return res.status(400).json({ erro: 'Cargo não encontrado.' });
+      if (!empresa) return res.status(400).json({ erro: 'Empresa não encontrada.' });
 
       const created = await db.insert('Funcionarios', {
         Nome: String(req.body.Nome).trim(),
         CPF: formatCpf(req.body.CPF),
         DataNascimento: req.body.DataNascimento,
         SetorID: req.body.SetorID,
-        CargoID: req.body.CargoID
+        CargoID: req.body.CargoID,
+        EmpresaID: req.body.EmpresaID
       });
       const [enriched] = await enrichWithNames([created]);
       res.status(201).json(enriched);
@@ -138,19 +145,22 @@ module.exports = {
         return res.status(400).json({ erro: 'Já existe outro funcionário com este CPF.' });
       }
 
-      const [setor, cargo] = await Promise.all([
+      const [setor, cargo, empresa] = await Promise.all([
         db.getById('Setores', req.body.SetorID),
-        db.getById('Cargos', req.body.CargoID)
+        db.getById('Cargos', req.body.CargoID),
+        db.getById('Empresas', req.body.EmpresaID)
       ]);
       if (!setor) return res.status(400).json({ erro: 'Setor não encontrado.' });
       if (!cargo) return res.status(400).json({ erro: 'Cargo não encontrado.' });
+      if (!empresa) return res.status(400).json({ erro: 'Empresa não encontrada.' });
 
       const updated = await db.update('Funcionarios', req.params.id, {
         Nome: String(req.body.Nome).trim(),
         CPF: formatCpf(req.body.CPF),
         DataNascimento: req.body.DataNascimento,
         SetorID: req.body.SetorID,
-        CargoID: req.body.CargoID
+        CargoID: req.body.CargoID,
+        EmpresaID: req.body.EmpresaID
       });
       const [enriched] = await enrichWithNames([updated]);
       res.json(enriched);

@@ -55,11 +55,13 @@ const SCHEMAS = {
   GruposRisco: ['ID', 'Nome', 'Cor', 'Ordem'],
   Cargo_Risco: ['ID', 'CargoID', 'RiscoID'],
   Cargo_Exame: ['ID', 'CargoID', 'ExameID'],
-  Funcionarios: ['ID', 'Nome', 'CPF', 'DataNascimento', 'SetorID', 'CargoID'],
+  Empresas: ['ID', 'RazaoSocial', 'CNPJ', 'Endereco', 'Bairro', 'CidadeUf', 'Cep', 'Telefone'],
+  Funcionarios: ['ID', 'Nome', 'CPF', 'DataNascimento', 'SetorID', 'CargoID', 'EmpresaID'],
   HistoricoPDF: [
     'ID', 'Nome', 'CPF', 'DataNascimento', 'Cargo', 'Setor',
     'DataGeracao', 'ArquivoPDF', 'TipoExame', 'CargoID', 'SetorID',
-    'Conclusao', 'ExamesDatas', 'DataAvaliacaoClinica', 'RiscosSnapshot', 'DocumentoSnapshot'
+    'Conclusao', 'ExamesDatas', 'DataAvaliacaoClinica', 'RiscosSnapshot', 'DocumentoSnapshot',
+    'EmpresaID', 'Empresa'
   ],
   ConfigGeral: [
     'ID', 'RazaoSocial', 'CNPJ', 'Endereco', 'Bairro', 'CidadeUf', 'Cep', 'Telefone',
@@ -151,6 +153,37 @@ function seedDefaults(wb) {
   }
 }
 
+function migrateEmpresas(wb) {
+  const empresasSheet = getSheetOrThrow(wb, 'Empresas');
+  let empresas = sheetToObjects(empresasSheet, SCHEMAS.Empresas);
+  let changed = false;
+
+  if (!empresas.length) {
+    const configs = sheetToObjects(getSheetOrThrow(wb, 'ConfigGeral'), SCHEMAS.ConfigGeral);
+    const origem = configs[0] || DEFAULT_CONFIG;
+    empresasSheet.addRow([
+      1, origem.RazaoSocial || DEFAULT_CONFIG.RazaoSocial, origem.CNPJ || DEFAULT_CONFIG.CNPJ,
+      origem.Endereco || '', origem.Bairro || '', origem.CidadeUf || '', origem.Cep || '', origem.Telefone || ''
+    ]);
+    empresas = sheetToObjects(empresasSheet, SCHEMAS.Empresas);
+    changed = true;
+  }
+
+  const empresaPadrao = empresas[0];
+  for (const sheetName of ['Funcionarios', 'HistoricoPDF']) {
+    const sheet = getSheetOrThrow(wb, sheetName);
+    const empresaIdCol = SCHEMAS[sheetName].indexOf('EmpresaID') + 1;
+    const empresaNomeCol = SCHEMAS[sheetName].indexOf('Empresa') + 1;
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1 || extractCellValue(row.getCell(empresaIdCol))) return;
+      row.getCell(empresaIdCol).value = empresaPadrao.ID;
+      if (empresaNomeCol > 0) row.getCell(empresaNomeCol).value = empresaPadrao.RazaoSocial;
+      changed = true;
+    });
+  }
+  return changed;
+}
+
 async function ensureDb() {
   if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 
@@ -160,6 +193,7 @@ async function ensureDb() {
       addSheetWithHeaders(wb, sheetName);
     }
     seedDefaults(wb);
+    migrateEmpresas(wb);
     await writeWorkbook(wb);
     console.log('Banco de dados criado em', DB_PATH);
     return;
@@ -182,6 +216,7 @@ async function ensureDb() {
     const beforeTipos = sheetToObjects(getSheetOrThrow(wb, 'TiposExame'), SCHEMAS.TiposExame).length;
     const beforeEx = sheetToObjects(getSheetOrThrow(wb, 'ExamesComplementares'), SCHEMAS.ExamesComplementares).length;
     seedDefaults(wb);
+    if (migrateEmpresas(wb)) changed = true;
     const afterCfg = sheetToObjects(getSheetOrThrow(wb, 'ConfigGeral'), SCHEMAS.ConfigGeral).length;
     const afterTipos = sheetToObjects(getSheetOrThrow(wb, 'TiposExame'), SCHEMAS.TiposExame).length;
     const afterEx = sheetToObjects(getSheetOrThrow(wb, 'ExamesComplementares'), SCHEMAS.ExamesComplementares).length;
@@ -450,6 +485,14 @@ async function getUsage(sheetName, id) {
     const vinculos = await getAll('Cargo_Exame');
     const links = vinculos.filter(r => equalsId(r, 'ExameID')).length;
     if (links) usage.push(`${links} vínculo(s) com cargos`);
+  }
+
+  if (sheetName === 'Empresas') {
+    const [funcionarios, historico] = await Promise.all([getAll('Funcionarios'), getAll('HistoricoPDF')]);
+    const funcs = funcionarios.filter(r => equalsId(r, 'EmpresaID')).length;
+    const hist = historico.filter(r => equalsId(r, 'EmpresaID')).length;
+    if (funcs) usage.push(`${funcs} funcionÃ¡rio(s)`);
+    if (hist) usage.push(`${hist} registro(s) no histÃ³rico`);
   }
 
   return usage;

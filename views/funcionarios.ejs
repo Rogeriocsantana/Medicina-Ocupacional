@@ -24,13 +24,14 @@
         <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Nome</th>
         <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">CPF</th>
         <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Nascimento</th>
+        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Empresa</th>
         <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Setor</th>
         <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Cargo</th>
         <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase text-right">Ações</th>
       </tr>
     </thead>
     <tbody id="tbody-funcionarios" class="divide-y divide-border-subtle">
-      <tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
+      <tr><td colspan="7" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
     </tbody>
   </table>
 </div>
@@ -44,6 +45,12 @@
       <div>
         <label class="block text-body-md font-semibold mb-1">Nome completo</label>
         <input id="func-nome" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+      </div>
+      <div>
+        <label class="block text-body-md font-semibold mb-1">Empresa</label>
+        <select id="func-empresa" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+          <option value="">Carregando...</option>
+        </select>
       </div>
       <div class="grid grid-cols-2 gap-4">
         <div>
@@ -81,6 +88,7 @@
 <script>
 let setoresCache = [];
 let cargosCache = [];
+let empresasCache = [];
 let paginaFuncionarios = 1;
 const ITENS_POR_PAGINA = 5;
 let buscaFuncionariosAtual = '';
@@ -94,10 +102,13 @@ function formatDateBR(iso) {
 }
 
 async function carregarSelectsModal() {
-  [setoresCache, cargosCache] = await Promise.all([
-    api('/api/setores'),
-    api('/api/cargos')
+  [setoresCache, cargosCache, empresasCache] = await Promise.all([
+    api('setores'),
+    api('cargos'),
+    api('empresas')
   ]);
+  document.getElementById('func-empresa').innerHTML = '<option value="">Selecione...</option>' +
+    empresasCache.map(e => `<option value="${e.ID}">${escapeHtml(e.RazaoSocial)}</option>`).join('');
   document.getElementById('func-setor').innerHTML = '<option value="">Selecione...</option>' +
     setoresCache.map(s => `<option value="${s.ID}">${escapeHtml(s.Nome)}</option>`).join('');
   document.getElementById('func-cargo').innerHTML = '<option value="">Selecione...</option>' +
@@ -108,9 +119,9 @@ async function carregarFuncionarios(busca = buscaFuncionariosAtual) {
   buscaFuncionariosAtual = busca;
   const tbody = document.getElementById('tbody-funcionarios');
   try {
-    const rows = await api(`/api/funcionarios?busca=${encodeURIComponent(busca)}`);
+    const rows = await api(`funcionarios?busca=${encodeURIComponent(busca)}`);
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Nenhum funcionário encontrado.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-on-surface-variant">Nenhum funcionário encontrado.</td></tr>';
       return;
     }
     const pagina = rows.slice((paginaFuncionarios - 1) * ITENS_POR_PAGINA, paginaFuncionarios * ITENS_POR_PAGINA);
@@ -119,6 +130,7 @@ async function carregarFuncionarios(busca = buscaFuncionariosAtual) {
         <td class="px-6 py-4 font-semibold">${escapeHtml(f.Nome)}</td>
         <td class="px-6 py-4 font-table-data text-table-data">${escapeHtml(f.CPF)}</td>
         <td class="px-6 py-4">${escapeHtml(formatDateBR(f.DataNascimento))}</td>
+        <td class="px-6 py-4">${escapeHtml(f.EmpresaNome || '')}</td>
         <td class="px-6 py-4">${escapeHtml(f.SetorNome || '')}</td>
         <td class="px-6 py-4">${escapeHtml(f.CargoNome || '')}</td>
         <td class="px-6 py-4 text-right">
@@ -155,6 +167,7 @@ function editar(func) {
   document.getElementById('func-nome').value = func.Nome || '';
   document.getElementById('func-cpf').value = formatCpf(func.CPF || '');
   document.getElementById('func-nascimento').value = func.DataNascimento || '';
+  document.getElementById('func-empresa').value = func.EmpresaID || '';
   document.getElementById('func-setor').value = func.SetorID || '';
   document.getElementById('func-cargo').value = func.CargoID || '';
   document.getElementById('func-cpf-erro').classList.add('hidden');
@@ -177,6 +190,7 @@ document.getElementById('form-funcionario').addEventListener('submit', async (e)
     Nome: document.getElementById('func-nome').value.trim(),
     CPF: cpfEl.value,
     DataNascimento: document.getElementById('func-nascimento').value,
+    EmpresaID: document.getElementById('func-empresa').value,
     SetorID: document.getElementById('func-setor').value,
     CargoID: document.getElementById('func-cargo').value
   };
@@ -184,10 +198,10 @@ document.getElementById('form-funcionario').addEventListener('submit', async (e)
   const id = document.getElementById('func-id').value;
   try {
     if (id) {
-      await api(`/api/funcionarios/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+      await api(`funcionarios/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
       toast('Funcionário atualizado.');
     } else {
-      await api('/api/funcionarios', { method: 'POST', body: JSON.stringify(payload) });
+      await api('funcionarios', { method: 'POST', body: JSON.stringify(payload) });
       toast('Funcionário cadastrado.');
     }
     fecharModal();
@@ -200,7 +214,7 @@ document.getElementById('form-funcionario').addEventListener('submit', async (e)
 async function excluir(id) {
   if (!confirmarExclusao('Excluir este funcionário?')) return;
   try {
-    await api(`/api/funcionarios/${id}`, { method: 'DELETE' });
+    await api(`funcionarios/${id}`, { method: 'DELETE' });
     toast('Funcionário excluído.');
     carregarFuncionarios(document.getElementById('busca').value);
   } catch (err) {
@@ -217,7 +231,7 @@ document.getElementById('busca').addEventListener('input', (e) => {
 
 async function abrirEdicaoPorId(id) {
   try {
-    const func = await api(`/api/funcionarios/${encodeURIComponent(id)}`);
+    const func = await api(`funcionarios/${encodeURIComponent(id)}`);
     editar(func);
     document.getElementById('func-nome').focus();
   } catch (err) {
@@ -233,7 +247,7 @@ async function abrirEdicaoPorId(id) {
   const params = new URLSearchParams(window.location.search);
   const editarId = params.get('editar') || params.get('id');
   if (editarId) {
-    window.history.replaceState({}, '', '/funcionarios');
+    window.history.replaceState({}, '', appUrl('funcionarios'));
     await abrirEdicaoPorId(editarId);
   }
 })();

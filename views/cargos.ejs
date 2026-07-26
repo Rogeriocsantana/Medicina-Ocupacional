@@ -58,7 +58,7 @@ async function carregarCargos(busca = buscaCargosAtual) {
   buscaCargosAtual = busca;
   const tbody = document.getElementById('tbody-cargos');
   try {
-    const todosCargos = await api('/api/cargos');
+    const todosCargos = await api('cargos');
     const cargos = todosCargos.filter(cargo => String(cargo.Nome || '').toLowerCase().includes(busca.toLowerCase().trim()));
     if (!cargos.length) {
       tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-on-surface-variant">Nenhum cargo cadastrado.</td></tr>';
@@ -111,10 +111,10 @@ document.getElementById('form-cargo').addEventListener('submit', async (e) => {
   if (!nome) return;
   try {
     if (id) {
-      await api(`/api/cargos/${id}`, { method: 'PUT', body: JSON.stringify({ Nome: nome }) });
+      await api(`cargos/${id}`, { method: 'PUT', body: JSON.stringify({ Nome: nome }) });
       toast('Cargo atualizado com sucesso.');
     } else {
-      await api('/api/cargos', { method: 'POST', body: JSON.stringify({ Nome: nome }) });
+      await api('cargos', { method: 'POST', body: JSON.stringify({ Nome: nome }) });
       toast('Cargo adicionado com sucesso.');
     }
     fecharModal();
@@ -127,7 +127,7 @@ document.getElementById('form-cargo').addEventListener('submit', async (e) => {
 async function excluir(id) {
   if (!confirmarExclusao('Excluir este cargo? Esta ação não pode ser desfeita.')) return;
   try {
-    await api(`/api/cargos/${id}`, { method: 'DELETE' });
+    await api(`cargos/${id}`, { method: 'DELETE' });
     toast('Cargo excluído.');
     carregarCargos();
   } catch (err) {

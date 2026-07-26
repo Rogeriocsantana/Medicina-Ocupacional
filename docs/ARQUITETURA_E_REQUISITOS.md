@@ -12,32 +12,34 @@ O projeto prioriza operação simples em desktop, rastreabilidade das emissões 
 | --- | --- |
 | Servidor | Node.js e Express para rotas, regras de negócio e APIs internas. |
 | Interface | EJS, JavaScript no navegador e classes utilitárias de estilo. |
-| Persistência | Planilha Excel local, manipulada pelo ExcelJS. |
+| Persistência | MySQL 8, acessado pelo driver mysql2. |
 | Documentos | PDFKit para geração dos ASOs. |
 | Arquivos | Banco, backups e PDFs permanecem no ambiente local. |
 
-O banco Excel deve permanecer fechado enquanto a aplicação estiver em uso. As gravações usam arquivo temporário e substituição atômica; antes de cada alteração é criada uma cópia de segurança em `dados/backups/`.
+O banco operacional é `medicina_db`, acessado pelo hostname `mysql` dentro da rede Docker `infra-net`. O arquivo Excel anterior permanece somente como fonte legada e não recebe novas gravações.
 
 ## Modelo de dados
 
-| Entidade/planilha | Finalidade |
+| Entidade/tabela | Finalidade |
 | --- | --- |
 | `Setores` | Setores da empresa. |
 | `Cargos` | Cargos ou funções. |
-| `Funcionarios` | Nome, CPF, nascimento, setor e cargo do colaborador. |
+| `Empresas` | Razão social, CNPJ, endereço e contatos das empresas atendidas. |
+| `Funcionarios` | Nome, CPF, nascimento, empresa, setor e cargo do colaborador. |
 | `GruposRisco` | Nome, cor e ordem de exibição dos grupos de risco. |
 | `Riscos` | Descrição do risco e seu grupo. |
 | `Cargo_Risco` | Relação de muitos para muitos entre cargo e risco. |
 | `ExamesComplementares` | Nome e ordem dos exames. |
 | `Cargo_Exame` | Relação de muitos para muitos entre cargo e exame complementar. |
 | `TiposExame` | Tipos de ASO, como admissional e periódico. |
-| `ConfigGeral` | Dados da clínica e do médico responsável. |
+| `ConfigGeral` | Dados do médico responsável e preferências gerais. |
 | `HistoricoPDF` | Emissões, dados de geração e snapshot do documento. |
 
 ### Relacionamentos principais
 
 ```text
-Setor ──< Funcionário >── Cargo
+Empresa ──< Funcionário >── Setor
+                         └── Cargo
                            ├──< Cargo_Risco >── Risco ──> Grupo de risco
                            └──< Cargo_Exame >── Exame complementar
 ```
@@ -47,10 +49,11 @@ Riscos e exames complementares são definidos pelo cargo. O setor continua sendo
 ## Regras de negócio
 
 - Um cargo pode ter zero, um ou vários riscos e exames complementares.
+- Todo funcionário deve estar vinculado a uma empresa cadastrada.
 - Ao selecionar um funcionário para gerar um ASO, riscos e exames são carregados a partir do cargo atual dele.
 - A emissão grava um snapshot completo do documento no histórico. O download sempre usa a última versão emitida daquela linha, não os dados originais em edição.
 - A ação **Atualizar** no histórico não sobrescreve a emissão anterior: cria uma nova linha, ordenada pela data de geração mais recente.
-- Antes de criar a nova emissão pelo histórico, o sistema busca o funcionário pelo CPF e aplica seu cargo e setor atuais. Por consequência, também aplica os riscos e exames do novo cargo.
+- Antes de criar a nova emissão pelo histórico, o sistema busca o funcionário pelo CPF e aplica sua empresa, cargo e setor atuais. Por consequência, também aplica os riscos e exames do novo cargo.
 - Exclusões são bloqueadas quando há dependências. A mensagem informa o vínculo que precisa ser removido primeiro.
 - Setores não podem ser excluídos se usados por funcionários ou histórico; cargos não podem ser excluídos se usados por funcionários, histórico, riscos ou exames; riscos e exames não podem ser excluídos enquanto vinculados a cargos.
 
@@ -73,6 +76,7 @@ Riscos e exames complementares são definidos pelo cargo. O setor continua sendo
 - Setores e cargos permitem busca por nome; funcionários permitem busca por nome ou CPF.
 - A tela de Riscos possui as abas **Riscos** e **Grupos de risco**. Nesta segunda aba são administrados nome, cor e ordem dos grupos; a listagem de riscos exibe a cor configurada para cada grupo.
 - Exames complementares possuem cadastro próprio e são vinculados posteriormente na tela de Relacionamentos.
+- A tela **Exames** possui as abas **Tipos de Exames** e **Exames Complementares**, cada uma com título próprio. A primeira administra opções como admissional, periódico e demissional; a segunda administra os exames vinculados aos cargos.
 - As listagens usam paginação de **cinco itens por página**, evitando barras de rolagem internas extensas.
 
 ### Relacionamentos
@@ -101,16 +105,16 @@ Riscos e exames complementares são definidos pelo cargo. O setor continua sendo
 
 ### Configurações
 
-Possui três abas:
+Possui duas abas:
 
-1. **Dados da clínica**: razão social, CNPJ, contatos e endereço.
+1. **Empresas**: cadastro, edição e exclusão das empresas disponíveis no cadastro de funcionários.
 2. **Médico**: nome, CRM, especialidade, RQE e seleção de ícone médico predefinido.
-3. **Tipos de exame**: cadastro, edição e exclusão dos tipos usados na emissão.
 Os grupos de risco são administrados na tela de Riscos. As ações de exclusão nas tabelas seguem o mesmo padrão visual da tela de Histórico.
 
 ## Operação e limites atuais
 
 - O sistema é local e não possui autenticação ou sincronização entre usuários.
-- Os arquivos do banco e dos backups devem ser incluídos na rotina de cópia da clínica.
-- Alterações no modelo da planilha são criadas ou ajustadas automaticamente na inicialização da aplicação.
+- O MySQL deve possuir rotina externa de backup e restauração testada.
+- Alterações estruturais são versionadas em `database/mysql-schema.sql` e `schema_migrations`.
+- A senha do banco é fornecida por variável de ambiente e não deve ser versionada.
 - A manutenção de dados deve respeitar os bloqueios de relacionamento para preservar a integridade dos ASOs históricos.

@@ -1,7 +1,7 @@
-const db = require('../services/excelService');
+const db = require('../services/mysqlService');
 
 // Cria um controller CRUD genérico para uma planilha simples (Setores, Cargos, Riscos)
-function makeCrudController(sheetName, allowedFields) {
+function makeCrudController(sheetName, allowedFields, requiredFields = allowedFields) {
   return {
     async listar(req, res) {
       try {
@@ -28,7 +28,7 @@ function makeCrudController(sheetName, allowedFields) {
       try {
         const data = {};
         allowedFields.forEach(f => { if (req.body[f] !== undefined) data[f] = req.body[f]; });
-        const missing = allowedFields.filter(f => !data[f] && data[f] !== 0);
+        const missing = requiredFields.filter(f => !data[f] && data[f] !== 0);
         if (missing.length) {
           return res.status(400).json({ erro: `Campos obrigatórios ausentes: ${missing.join(', ')}` });
         }

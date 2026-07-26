@@ -37,6 +37,12 @@ router.post('/funcionarios', funcionariosController.criar);
 router.put('/funcionarios/:id', funcionariosController.atualizar);
 router.delete('/funcionarios/:id', funcionariosController.remover);
 
+router.get('/empresas', configController.empresas.listar);
+router.get('/empresas/:id', configController.empresas.obter);
+router.post('/empresas', configController.empresas.criar);
+router.put('/empresas/:id', configController.empresas.atualizar);
+router.delete('/empresas/:id', configController.empresas.remover);
+
 router.get('/cargo-risco/resumo', cargoRiscoController.listarResumo);
 router.get('/cargo-risco/:cargoId', cargoRiscoController.obterPorCargo);
 router.post('/cargo-risco', cargoRiscoController.salvar);

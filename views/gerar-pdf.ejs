@@ -10,11 +10,12 @@
 
   <form id="form-pdf" class="bg-surface border border-border-subtle rounded-xl p-6 space-y-5">
     <input type="hidden" id="historicoId" value="">
+    <input type="hidden" id="empresaId" value="">
 
     <div id="painel-busca-funcionario" class="bg-background-main border border-border-subtle rounded-lg p-4 space-y-3">
       <div class="flex items-center justify-between gap-2">
         <label class="block text-body-md font-semibold">Buscar funcionário cadastrado</label>
-        <a href="/funcionarios" class="text-primary text-body-md font-semibold hover:underline">+ Cadastrar</a>
+        <a href="<%= baseUrl('funcionarios') %>" class="text-primary text-body-md font-semibold hover:underline">+ Cadastrar</a>
       </div>
       <div class="relative">
         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
@@ -25,7 +26,7 @@
 
     <div id="funcionario-selecionado" class="hidden items-center justify-between gap-3 bg-primary-fixed border border-border-subtle rounded-lg px-4 py-2.5">
       <span id="funcionario-selecionado-texto" class="text-body-md text-primary font-semibold"></span>
-      <a id="btn-editar-funcionario" href="/funcionarios" title="Editar cadastro deste funcionário" aria-label="Editar cadastro deste funcionário"
+      <a id="btn-editar-funcionario" href="<%= baseUrl('funcionarios') %>" title="Editar cadastro deste funcionário" aria-label="Editar cadastro deste funcionário"
          class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg text-primary hover:bg-surface">
         <span class="material-symbols-outlined">edit</span>
       </a>
@@ -109,7 +110,7 @@
     </div>
 
     <div class="flex justify-between items-center pt-2 gap-3">
-      <a id="link-voltar-historico" href="/historico" class="hidden px-4 py-2.5 rounded-lg font-semibold text-on-surface-variant hover:bg-surface-container-low">Voltar ao histórico</a>
+      <a id="link-voltar-historico" href="<%= baseUrl('historico') %>" class="hidden px-4 py-2.5 rounded-lg font-semibold text-on-surface-variant hover:bg-surface-container-low">Voltar ao histórico</a>
       <button type="submit" id="btn-gerar" class="ml-auto bg-primary text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:opacity-90">
         <span class="material-symbols-outlined" id="btn-gerar-icon">picture_as_pdf</span>
         <span id="btn-gerar-texto">Gerar PDF</span>
@@ -134,7 +135,7 @@ function mostrarFuncionarioSelecionado(func) {
   document.getElementById('funcionario-selecionado-texto').textContent =
     `Selecionado: ${func.Nome} — ${formatCpf(func.CPF)}`;
   const btn = document.getElementById('btn-editar-funcionario');
-  btn.href = `/funcionarios?editar=${encodeURIComponent(func.ID)}`;
+  btn.href = appUrl(`funcionarios?editar=${encodeURIComponent(func.ID)}`);
   box.classList.remove('hidden');
   box.classList.add('flex');
 }
@@ -143,14 +144,15 @@ function limparFuncionarioSelecionado() {
   const box = document.getElementById('funcionario-selecionado');
   box.classList.add('hidden');
   box.classList.remove('flex');
-  document.getElementById('btn-editar-funcionario').href = '/funcionarios';
+  document.getElementById('btn-editar-funcionario').href = appUrl('funcionarios');
+  document.getElementById('empresaId').value = '';
 }
 
 async function buscarFuncionarioPorCpf(cpf) {
   const digits = onlyDigits(cpf);
   if (digits.length !== 11) return null;
   try {
-    const rows = await api(`/api/funcionarios?busca=${encodeURIComponent(digits)}`);
+    const rows = await api(`funcionarios?busca=${encodeURIComponent(digits)}`);
     return rows.find(f => onlyDigits(f.CPF) === digits) || null;
   } catch (_) {
     return null;
@@ -163,6 +165,7 @@ function preencherFuncionario(func) {
   document.getElementById('dataNascimento').value = func.DataNascimento || '';
   document.getElementById('setorId').value = func.SetorID || '';
   document.getElementById('cargoId').value = func.CargoID || '';
+  document.getElementById('empresaId').value = func.EmpresaID || '';
   document.getElementById('cpf-erro').classList.add('hidden');
   document.getElementById('buscaFuncionario').value = func.Nome || '';
   document.getElementById('lista-funcionarios').classList.add('hidden');
@@ -180,9 +183,9 @@ async function buscarFuncionarios(termo) {
     return;
   }
   try {
-    const rows = await api(`/api/funcionarios?busca=${encodeURIComponent(q)}`);
+    const rows = await api(`funcionarios?busca=${encodeURIComponent(q)}`);
     if (!rows.length) {
-      lista.innerHTML = '<p class="px-4 py-3 text-on-surface-variant text-body-md">Nenhum funcionário encontrado. <a href="/funcionarios" class="text-primary font-semibold">Cadastrar</a></p>';
+      lista.innerHTML = `<p class="px-4 py-3 text-on-surface-variant text-body-md">Nenhum funcionário encontrado. <a href="${appUrl('funcionarios')}" class="text-primary font-semibold">Cadastrar</a></p>`;
       lista.classList.remove('hidden');
       return;
     }
@@ -253,7 +256,7 @@ async function atualizarExamesDoCargo(cargoId, valores = {}) {
     return;
   }
   try {
-    const vinculo = await api(`/api/cargo-exame/${cargoId}`);
+    const vinculo = await api(`cargo-exame/${cargoId}`);
     const ids = new Set(vinculo.exameIds.map(String));
     examesCadastro = todosExames.filter(exame => ids.has(String(exame.ID)));
     renderExamesDatas(valores);
@@ -269,7 +272,7 @@ async function atualizarPreviewRiscos(cargoId) {
   const conteudo = document.getElementById('preview-riscos-conteudo');
   if (!cargoId) { preview.classList.add('hidden'); return; }
   try {
-    const vinculo = await api(`/api/cargo-risco/${cargoId}`);
+    const vinculo = await api(`cargo-risco/${cargoId}`);
     const ids = new Set(vinculo.riscoIds.map(String));
     const selecionados = todosRiscos.filter(r => ids.has(String(r.ID)));
     if (!selecionados.length) {
@@ -289,11 +292,11 @@ async function atualizarPreviewRiscos(cargoId) {
 
 async function carregarSelects() {
   const [setores, cargos, riscos, tipos, exames] = await Promise.all([
-    api('/api/setores'),
-    api('/api/cargos'),
-    api('/api/riscos'),
-    api('/api/tipos-exame'),
-    api('/api/exames-complementares')
+    api('setores'),
+    api('cargos'),
+    api('riscos'),
+    api('tipos-exame'),
+    api('exames-complementares')
   ]);
   todosRiscos = riscos;
   todosExames = exames;
@@ -309,13 +312,14 @@ async function carregarSelects() {
 }
 
 async function carregarParaEdicao(id) {
-  const reg = await api(`/api/historico/${id}`);
+  const reg = await api(`historico/${id}`);
   document.getElementById('historicoId').value = reg.ID;
   document.getElementById('nome').value = reg.Nome || '';
   document.getElementById('cpf').value = formatCpf(reg.CPF || '');
   document.getElementById('dataNascimento').value = reg.DataNascimento || '';
   document.getElementById('setorId').value = reg.SetorID || '';
   document.getElementById('cargoId').value = reg.CargoID || '';
+  document.getElementById('empresaId').value = reg.EmpresaID || '';
   document.getElementById('tipoExame').value = reg.TipoExame || 'admissional';
   document.getElementById('dataAvaliacaoClinica').value = reg.DataAvaliacaoClinica || '';
 
@@ -388,6 +392,7 @@ document.getElementById('form-pdf').addEventListener('submit', async (e) => {
     dataNascimento: document.getElementById('dataNascimento').value,
     setorId: document.getElementById('setorId').value,
     cargoId: document.getElementById('cargoId').value,
+    empresaId: document.getElementById('empresaId').value,
     tipoExame: document.getElementById('tipoExame').value,
     conclusao: conclusaoEl ? conclusaoEl.value : '',
     dataAvaliacaoClinica: document.getElementById('dataAvaliacaoClinica').value || '',
@@ -399,14 +404,14 @@ document.getElementById('form-pdf').addEventListener('submit', async (e) => {
   btn.disabled = true;
   try {
     if (historicoId) {
-      const data = await api(`/api/historico/${historicoId}`, {
+      const data = await api(`historico/${historicoId}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
       });
       toast(data.mensagem || 'Dados salvos.');
-      window.location.href = '/historico';
+      window.location.href = appUrl('historico');
     } else {
-      const res = await fetch('/api/gerar-pdf', {
+      const res = await fetch(apiUrl('gerar-pdf'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',

@@ -59,7 +59,7 @@ async function carregarSetores(busca = buscaSetoresAtual) {
   buscaSetoresAtual = busca;
   const tbody = document.getElementById('tbody-setores');
   try {
-    const todosSetores = await api('/api/setores');
+    const todosSetores = await api('setores');
     const setores = todosSetores.filter(setor => String(setor.Nome || '').toLowerCase().includes(busca.toLowerCase().trim()));
     if (!setores.length) {
       tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-on-surface-variant">Nenhum setor cadastrado.</td></tr>';
@@ -112,10 +112,10 @@ document.getElementById('form-setor').addEventListener('submit', async (e) => {
   if (!nome) return;
   try {
     if (id) {
-      await api(`/api/setores/${id}`, { method: 'PUT', body: JSON.stringify({ Nome: nome }) });
+      await api(`setores/${id}`, { method: 'PUT', body: JSON.stringify({ Nome: nome }) });
       toast('Setor atualizado com sucesso.');
     } else {
-      await api('/api/setores', { method: 'POST', body: JSON.stringify({ Nome: nome }) });
+      await api('setores', { method: 'POST', body: JSON.stringify({ Nome: nome }) });
       toast('Setor adicionado com sucesso.');
     }
     fecharModal();
@@ -128,7 +128,7 @@ document.getElementById('form-setor').addEventListener('submit', async (e) => {
 async function excluir(id) {
   if (!confirmarExclusao('Excluir este setor? Esta ação não pode ser desfeita.')) return;
   try {
-    await api(`/api/setores/${id}`, { method: 'DELETE' });
+    await api(`setores/${id}`, { method: 'DELETE' });
     toast('Setor excluído.');
     carregarSetores();
   } catch (err) {

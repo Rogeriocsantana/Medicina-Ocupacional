@@ -1,4 +1,4 @@
-const db = require('../services/excelService');
+const db = require('../services/mysqlService');
 
 module.exports = {
   async stats(req, res) {
