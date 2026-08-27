@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><%= typeof pageTitle !== 'undefined' ? pageTitle + ' - Medicina Ocupacional' : 'Página - Medicina Ocupacional' %></title>
+<link rel="icon" type="image/png" sizes="64x64" href="<%= basePath %>/public/favicon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="<%= basePath %>/public/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -60,13 +62,276 @@
   @keyframes card-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .card-enter { animation: card-enter 280ms ease both; }
   .card-enter:nth-child(2) { animation-delay: 45ms; } .card-enter:nth-child(3) { animation-delay: 90ms; } .card-enter:nth-child(4) { animation-delay: 135ms; }
+  .searchable-select-menu { box-shadow: 0 14px 35px rgba(25, 28, 33, .18); }
+  .searchable-select-option[aria-selected="true"] { background: #d6e3ff; color: #00478d; font-weight: 700; }
+  .dark .searchable-select-menu { background: #171c27 !important; border-color: #3a4659 !important; color: #e8eef8; box-shadow: 0 18px 40px rgba(0, 0, 0, .48); }
+  .dark .searchable-select-menu > div:first-child { background: #171c27 !important; border-color: #3a4659 !important; }
+  .dark .searchable-select-option { color: #dbe6f5; background: #171c27; }
+  .dark .searchable-select-option:hover { background: #253247 !important; color: #fff; }
+  .dark .searchable-select-option[aria-selected="true"] { background: #294b74 !important; color: #dcecff !important; }
+  .app-sidebar { width: 260px; overflow: visible; transition: width 180ms ease; padding-left: 2px; padding-right: 2px; }
+  .app-main { margin-left: 260px; transition: margin-left 180ms ease; }
+  .sidebar-top, .sidebar-brand, .sidebar-link, .sidebar-pdf-wrap { transition: padding 180ms ease, gap 180ms ease; }
+  .sidebar-top { position: relative; padding-right: 66px !important; }
+  .sidebar-brand-text { min-width: 0; max-width: 124px; }
+  .sidebar-brand-text p { font-size: 9px !important; letter-spacing: .055em !important; }
+  .sidebar-label, .sidebar-brand-text, .sidebar-pdf-label { white-space: nowrap; transition: opacity 120ms ease; }
+  .sidebar-link-active { background: #e7f0ff; color: #00478d; font-weight: 600; box-shadow: 0 1px 2px rgba(0,71,141,.08); }
+  .sidebar-link { min-height: 42px; border-radius: 11px; }
+  .sidebar-toggle { position: absolute; right: 12px; flex: 0 0 auto; width: 40px; height: 40px; border-radius: 10px; color: #00478d; display: flex; align-items: center; justify-content: center; transition: background 150ms ease, color 150ms ease; z-index: 50; }
+  .sidebar-toggle:hover { background: #e7f0ff; color: #003768; }
+  .sidebar-toggle .material-symbols-outlined { font-size: 22px; }
+  .sidebar-link, .sidebar-pdf { position: relative; }
+  .sidebar-hover-tooltip { position: absolute; z-index: 80; padding: 7px 10px; border-radius: 8px; background: #24262b; color: white; font-size: 12px; font-weight: 600; line-height: 1.2; white-space: nowrap; box-shadow: 0 5px 18px rgba(25,28,33,.22); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 120ms ease, visibility 120ms ease; }
+  .sidebar-toggle-tooltip { right: 0; top: calc(100% + 12px); }
+  .sidebar-toggle:hover .sidebar-toggle-tooltip { opacity: 1; visibility: visible; }
+  .sidebar-link > .sidebar-hover-tooltip { left: calc(100% + 12px); top: 50%; transform: translateY(-50%); }
+  .sidebar-collapsed .app-sidebar { width: 72px; }
+  .sidebar-collapsed .app-main { margin-left: 72px; }
+  .sidebar-collapsed .sidebar-top { position: relative; padding-left: 14px; padding-right: 14px !important; justify-content: center; }
+  .sidebar-collapsed .sidebar-brand { display: flex; justify-content: center; }
+  .sidebar-collapsed .sidebar-toggle { position: absolute; right: auto; opacity: 0; visibility: hidden; }
+  .sidebar-collapsed .sidebar-top:hover .sidebar-brand { opacity: 0; visibility: hidden; }
+  .sidebar-collapsed .sidebar-top:hover .sidebar-toggle { opacity: 1; visibility: visible; }
+  .sidebar-collapsed .sidebar-brand-text, .sidebar-collapsed .sidebar-label, .sidebar-collapsed .sidebar-pdf-label { display: none; }
+  .sidebar-collapsed .sidebar-nav { padding-left: 10px; padding-right: 10px; }
+  .sidebar-collapsed .sidebar-link { justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
+  .sidebar-collapsed .sidebar-link:hover > .sidebar-hover-tooltip { opacity: 1; visibility: visible; }
+  .sidebar-collapsed .sidebar-toggle-tooltip { left: calc(100% + 12px); right: auto; top: 50%; transform: translateY(-50%); }
+  .sidebar-collapsed .sidebar-pdf-wrap { padding-left: 14px; padding-right: 14px; }
+  .sidebar-collapsed .sidebar-pdf { width: 44px; height: 44px; padding: 0; }
+  .sidebar-collapsed .sidebar-pdf:hover::after { content: attr(data-tooltip); position: absolute; z-index: 80; left: 52px; top: 50%; transform: translateY(-50%); padding: 7px 10px; border-radius: 8px; background: #24262b; color: white; font-size: 12px; font-weight: 600; white-space: nowrap; box-shadow: 0 5px 18px rgba(25,28,33,.22); }
+  body, .app-sidebar, .app-main, header, table, input, select, .modern-surface { transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease; }
+  .modern-title { font-size: 26px; line-height: 32px; letter-spacing: -.025em; font-weight: 600; }
+  .modern-subtitle { color: #707989; font-size: 13px; line-height: 20px; }
+  .modern-surface { background: #fff; border: 1px solid #e4e8f0; border-radius: 14px; }
+  .modern-metric { padding: 17px; }
+  .modern-metric-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #075cae; background: #edf5ff; }
+  .modern-control { height: 40px; border: 1px solid #dfe4ec; border-radius: 10px; background: #fff; }
+  .modern-primary { background: #075cae; color: #fff; border-radius: 10px; }
+  .modern-tabs { display: flex; gap: 4px; border-bottom: 1px solid #dfe4ec; }
+  .modern-tab { padding: 10px 12px; border-bottom: 2px solid transparent; color: #6a7383; font-size: 12px; }
+  .modern-tab.active { color: #004f9e; border-bottom-color: #075cae; font-weight: 600; }
+  .modern-count { margin-left: 5px; padding: 2px 6px; border-radius: 999px; background: #e8edf4; font-size: 10px; }
+  .dark body, .dark .bg-background-main { background: #10141d !important; color: #edf3ff; }
+  .dark .app-sidebar, .dark .bg-surface, .dark header, .dark .modern-surface { background: #171c27 !important; border-color: #354052 !important; color: #edf3ff; }
+  .dark .bg-surface-container, .dark .bg-surface-container-low, .dark .bg-surface-container-high, .dark .bg-surface-container-highest, .dark .bg-secondary-container, .dark input, .dark select, .dark textarea { background: #1d2431 !important; border-color: #3a4659 !important; color: #edf3ff !important; }
+  .dark .text-on-surface { color: #edf3ff !important; }
+  .dark .text-on-surface-variant, .dark .modern-subtitle { color: #9ba7ba !important; }
+  .dark .border-border-subtle { border-color: #293142 !important; }
+  .dark .divide-border-subtle > :not([hidden]) ~ :not([hidden]) { border-color: #354052 !important; }
+  .dark .text-primary { color: #8dc5ff !important; }
+  .dark .text-error { color: #ff7777 !important; }
+  .dark .text-green-700, .dark .text-green-800 { color: #174f31 !important; }
+  .dark .bg-primary-fixed { background: #203a57 !important; }
+  .dark .hover\:bg-primary-fixed:hover { background: #294968 !important; }
+  .dark .hover\:bg-error-container:hover { background: #4a252b !important; }
+  .dark .sidebar-link-active { background: #1b3552; color: #b4d6ff; }
+  .dark .sidebar-toggle:hover, .dark .hover\:bg-surface-container-low:hover { background: #243246 !important; }
+  .dark .modern-metric-icon { background: #1b3552; color: #a9d1ff; }
+  .dark .modern-control { background: #171c27; border-color: #364052; color: #edf3ff; }
+  .dark .modern-tabs { border-color: #293142; }
+  .dark .modern-tab { color: #9ba7ba; }
+  .dark .modern-tab.active { color: #a9d1ff; border-color: #4b9ced; }
+  .dark .modern-count { background: #293142; }
+  .dark thead { background: #1b212d !important; }
+  .dark tbody tr:hover { background: #1c2b3b !important; }
+  .dark .modal-backdrop { background: rgba(3, 7, 14, .72); }
+  .app-main > header { height: 68px; padding-left: 26px; padding-right: 26px; }
+  .app-main > .p-gutter { padding: 26px; }
+  .ui-icon { width: 18px; height: 18px; display: inline-block; vertical-align: middle; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .sidebar-link .ui-icon { width: 19px; height: 19px; }
+  .modern-metric-icon .ui-icon { width: 17px; height: 17px; }
+  .modern-surface { box-shadow: none; }
+  .modern-primary, .modern-control, .modern-tab { font-weight: 500; }
+  .modern-table thead th { text-transform: none; letter-spacing: 0; font-weight: 500; color: #7b8493; background: #fafbfd; }
+  .modern-table tbody td { font-weight: 400; }
+  .modern-pagination { padding: 10px 2px 12px; border: 0; background: transparent; }
+  .modern-pagination button { border-radius: 8px; }
+  .modern-pagination .ui-icon { width: 15px; height: 15px; }
+  .icon-chevron-left .ui-icon { transform: rotate(180deg); }
+  .dark .modern-table thead th { color: #95a2b5; background: #1b212d; }
+  .dark .modern-table tbody tr { background: #171c27; }
+  .dark .modern-table tbody td { color: #e8eef8; border-color: #354052; }
+  .dark .modern-pagination button:not(.bg-primary) { color: #dbe6f5; border-color: #3a4659; }
+  .mobile-sidebar-backdrop { display: none; }
+  .mobile-row-actions { display: none; }
+  .table-desktop-actions { display: contents; }
+  .table-mobile-actions { display: none; }
+  th.table-action-header, table:has(th.table-action-header) tbody td:last-child { min-width: 104px; white-space: nowrap; }
+  @media (max-width: 767px) {
+    .app-sidebar, .sidebar-collapsed .app-sidebar {
+      width: 260px !important;
+      transform: translateX(-100%);
+      transition: transform 180ms ease;
+      box-shadow: 18px 0 42px rgba(15, 23, 42, .18);
+    }
+    .mobile-sidebar-open .app-sidebar { transform: translateX(0); }
+    .app-main, .sidebar-collapsed .app-main { margin-left: 0 !important; }
+    .sidebar-collapsed .sidebar-brand-text, .sidebar-collapsed .sidebar-label, .sidebar-collapsed .sidebar-pdf-label { display: initial; }
+    .sidebar-collapsed .sidebar-nav { padding-left: .75rem; padding-right: .75rem; }
+    .sidebar-collapsed .sidebar-link { justify-content: flex-start; gap: .75rem; padding-left: .75rem; padding-right: .75rem; }
+    .sidebar-collapsed .sidebar-pdf-wrap { padding-left: 1rem; padding-right: 1rem; }
+    .sidebar-collapsed .sidebar-pdf { width: 100%; height: auto; padding: .75rem 1rem; }
+    .sidebar-collapsed .sidebar-top { padding-left: 1rem; padding-right: 58px !important; justify-content: space-between; }
+    .sidebar-collapsed .sidebar-toggle { position: absolute; right: 12px; opacity: 1; visibility: visible; }
+    .sidebar-collapsed .sidebar-top:hover .sidebar-brand { opacity: 1; visibility: visible; }
+    .mobile-sidebar-backdrop { position: fixed; inset: 0; z-index: 35; background: rgba(15, 23, 42, .48); }
+    .mobile-sidebar-open .mobile-sidebar-backdrop { display: block; }
+    .app-main > header { padding-left: 14px; padding-right: 14px; }
+    .app-main > .p-gutter { padding: 18px 14px; overflow-x: hidden; }
+    .modern-title { font-size: 24px; line-height: 29px; }
+    .employee-table { min-width: 100% !important; table-layout: fixed; }
+    .employee-table .col-company, .employee-table .col-due { display: none; }
+    .employee-table col.col-employee { width: 38% !important; }
+    .employee-table col.col-sector { width: 31% !important; }
+    .employee-table col.col-status { width: 21% !important; }
+    .employee-table col.col-actions { width: 10% !important; }
+    .employee-table th, .employee-table td { padding-left: 10px !important; padding-right: 8px !important; font-size: 11px; overflow-wrap: anywhere; }
+    .employee-table .col-employee .modern-subtitle, .employee-table .col-sector .modern-subtitle { display: none; }
+    .employee-table .desktop-row-actions { display: none; }
+    .employee-table .mobile-row-actions { display: flex; justify-content: flex-end; position: relative; }
+    .employee-table .mobile-row-actions-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 126px; padding: 5px; border: 1px solid #dfe4ec; border-radius: 9px; background: #fff; box-shadow: 0 10px 28px rgba(15,23,42,.2); }
+    .employee-table .mobile-row-actions-menu button { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 9px; border-radius: 6px; text-align: left; }
+    .dark .employee-table .mobile-row-actions-menu { background: #202837; border-color: #3a4659; }
+    .table-desktop-actions { display: none !important; }
+    .table-mobile-actions { display: flex; justify-content: flex-end; position: relative; }
+    th.table-action-header, table:has(th.table-action-header) tbody td:last-child { min-width: 44px !important; width: 44px; padding-left: 6px !important; padding-right: 6px !important; }
+    th.table-action-header { font-size: 0 !important; }
+    th.table-action-header::after { content: 'Ações'; font-size: 10px; }
+    .table-mobile-actions-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 138px; padding: 5px; border: 1px solid #dfe4ec; border-radius: 9px; background: #fff; box-shadow: 0 10px 28px rgba(15,23,42,.22); }
+    .table-mobile-actions-menu > button, .table-mobile-actions-menu > a { width: 100% !important; min-height: 36px; display: flex !important; align-items: center; justify-content: flex-start !important; gap: 8px; padding: 8px 9px !important; border-radius: 6px; text-align: left; opacity: 1 !important; }
+    .table-mobile-actions-menu > button:hover, .table-mobile-actions-menu > a:hover { background: #edf3fb; }
+    .dark .table-mobile-actions-menu { background: #202837; border-color: #3a4659; }
+    .dark .table-mobile-actions-menu > button:hover, .dark .table-mobile-actions-menu > a:hover { background: #2a3547; }
+  }
 </style>
+<script>try { if (localStorage.getItem('medicinaSidebarCollapsed') === 'true') document.documentElement.classList.add('sidebar-collapsed'); if (localStorage.getItem('medicinaTheme') === 'dark') document.documentElement.classList.add('dark'); } catch (_) {}</script>
 <script>
 // ---- Helpers compartilhados (carregados antes de qualquer script de página) ----
 const APP_CONFIG = Object.freeze({
   basePath: <%- JSON.stringify(basePath) %>
 });
 const BASE_PATH = APP_CONFIG.basePath;
+
+const UI_ICON_PATHS = Object.freeze({
+  dashboard: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>',
+  building: '<path d="M3 21h18M6 21V4h9v17M15 9h3v12M9 8h2M9 12h2M9 16h2"/>',
+  briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  alert: '<path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>',
+  microscope: '<path d="M6 18h8M3 22h18M14 22a7 7 0 0 0-7-7M9 14l1-2M17 3l-5 5M16 2l3 3-7 7-3-3z"/>',
+  branch: '<circle cx="6" cy="4" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M6 6v10a2 2 0 0 0 2 2h8M8 8h8a2 2 0 0 0 2-2"/>',
+  history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+  panel: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
+  filePlus: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15h6"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l-2.83 2.83a1.7 1.7 0 0 0-1.88-.34A1.7 1.7 0 0 0 14 20.93V21h-4v-.09A1.7 1.7 0 0 0 9 19.36a1.7 1.7 0 0 0-1.88.34l-2.83-2.83A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.09 14H3v-4h.09A1.7 1.7 0 0 0 4.64 9a1.7 1.7 0 0 0-.34-1.88l2.83-2.83A1.7 1.7 0 0 0 9 4.63 1.7 1.7 0 0 0 10 3.09V3h4v.09A1.7 1.7 0 0 0 15 4.64a1.7 1.7 0 0 0 1.88-.34l2.83 2.83A1.7 1.7 0 0 0 19.37 9 1.7 1.7 0 0 0 20.91 10H21v4h-.09A1.7 1.7 0 0 0 19.4 15z"/>',
+  medical: '<path d="M8 3h8v5h5v8h-5v5H8v-5H3V8h5z"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+  userPlus: '<path d="M15 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8" cy="7" r="4"/><path d="M19 8v6M16 11h6"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M16 16h.01"/>',
+  fileText: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/>',
+  chevronRight: '<path d="m9 18 6-6-6-6"/>',
+  sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  moreVertical: '<circle cx="12" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/>',
+  pencil: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v6M14 11v6"/>'
+});
+function renderUiIcons(root = document) { root.querySelectorAll('[data-ui-icon]').forEach(el => { const path = UI_ICON_PATHS[el.dataset.uiIcon]; if (path) el.innerHTML = `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">${path}</svg>`; }); }
+
+function fecharMenusAcoesTabelas(excecao = null) {
+  document.querySelectorAll('.table-mobile-actions-menu').forEach(menu => {
+    if (menu !== excecao) menu.classList.add('hidden');
+  });
+}
+
+function alternarMenuAcoesTabela(event, botao) {
+  event.stopPropagation();
+  const menu = botao.nextElementSibling;
+  fecharMenusAcoesTabelas(menu);
+  menu.classList.toggle('hidden');
+}
+
+function rotuloAcaoMobile(acao) {
+  const explicito = acao.getAttribute('title') || acao.getAttribute('aria-label');
+  if (explicito) return explicito;
+  const tecnico = normalizeSearchText(acao.textContent).replace(/\s+/g, '_');
+  const rotulos = {
+    edit: 'Editar', delete: 'Excluir', group: 'Colaboradores', groups: 'Colaboradores',
+    person: 'Colaborador', people: 'Colaboradores', download: 'Baixar', refresh: 'Atualizar',
+    update: 'Atualizar', visibility: 'Visualizar', open_in_new: 'Abrir', content_copy: 'Copiar',
+    restore: 'Restaurar', description: 'Documento', picture_as_pdf: 'Baixar PDF'
+  };
+  return rotulos[tecnico] || 'Abrir';
+}
+
+function aprimorarAcoesTabelas(root = document) {
+  const tabelas = root.matches?.('table') ? [root] : Array.from(root.querySelectorAll?.('table') || []);
+  tabelas.forEach(tabela => {
+    const cabecalhos = tabela.querySelectorAll('thead th');
+    if (!cabecalhos.length) return;
+    const ultimoCabecalho = cabecalhos[cabecalhos.length - 1];
+    const titulo = normalizeSearchText(ultimoCabecalho.textContent).replace(/[^a-z]/g, '');
+    if (titulo !== 'acao' && titulo !== 'acoes') return;
+    ultimoCabecalho.classList.add('table-action-header');
+    tabela.querySelectorAll('tbody tr').forEach(linha => {
+      const celulas = linha.querySelectorAll(':scope > td');
+      const celula = celulas[celulas.length - 1];
+      if (!celula || celula.dataset.kebabEnhanced === 'true' || celula.querySelector('.mobile-row-actions')) return;
+      const acoes = Array.from(celula.querySelectorAll('button, a'));
+      if (!acoes.length) return;
+      celula.dataset.kebabEnhanced = 'true';
+      celula.classList.add('relative');
+      const desktop = document.createElement('div');
+      desktop.className = 'table-desktop-actions';
+      while (celula.firstChild) desktop.appendChild(celula.firstChild);
+      celula.appendChild(desktop);
+      const mobile = document.createElement('div');
+      mobile.className = 'table-mobile-actions';
+      const gatilho = document.createElement('button');
+      gatilho.type = 'button';
+      gatilho.className = 'p-1.5 text-on-surface-variant rounded hover:bg-surface-container-low';
+      gatilho.setAttribute('aria-label', 'Abrir ações');
+      gatilho.setAttribute('data-ui-icon', 'moreVertical');
+      gatilho.addEventListener('click', event => alternarMenuAcoesTabela(event, gatilho));
+      const menu = document.createElement('div');
+      menu.className = 'table-mobile-actions-menu hidden';
+      acoes.forEach(acao => {
+        const copia = acao.cloneNode(true);
+        const rotulo = rotuloAcaoMobile(acao);
+        copia.removeAttribute('title');
+        const textoVisivel = Array.from(copia.childNodes).some(no => {
+          if (no.nodeType === 3) return no.textContent.trim();
+          if (no.nodeType !== 1) return false;
+          return !no.matches('.material-symbols-outlined, [data-ui-icon]') && no.textContent.trim();
+        });
+        if (!textoVisivel) {
+          const texto = document.createElement('span');
+          texto.textContent = rotulo;
+          copia.appendChild(texto);
+        }
+        copia.addEventListener('click', fecharMenusAcoesTabelas);
+        menu.appendChild(copia);
+      });
+      mobile.append(gatilho, menu);
+      celula.appendChild(mobile);
+      renderUiIcons(mobile);
+    });
+  });
+}
+
+document.addEventListener('click', () => fecharMenusAcoesTabelas());
+document.addEventListener('DOMContentLoaded', () => {
+  renderUiIcons();
+  aprimorarAcoesTabelas();
+  new MutationObserver(mudancas => mudancas.forEach(mudanca => mudanca.addedNodes.forEach(no => {
+    if (no.nodeType === 1) aprimorarAcoesTabelas(no.closest?.('table') || no);
+  }))).observe(document.body, { childList: true, subtree: true });
+});
 
 function appUrl(path = '') {
   const cleanPath = String(path || '').replace(/^\/+/, '');
@@ -115,9 +380,11 @@ function htmlPaginacao(pagina, totalItens, porPagina, funcao) {
   const inicio = (pagina - 1) * porPagina + 1;
   const fim = Math.min(pagina * porPagina, totalItens);
   const botoes = Array.from({ length: totalPaginas }, (_, i) => i + 1)
-    .filter(n => n === 1 || n === totalPaginas || Math.abs(n - pagina) <= 1)
+    .filter(n => totalPaginas <= 7 || n === 1 || n === totalPaginas || Math.abs(n - pagina) <= 1)
     .map((n, i, arr) => `${i && n - arr[i - 1] > 1 ? '<span class="px-1 text-on-surface-variant">…</span>' : ''}<button type="button" onclick="${funcao}(${n})" class="min-w-8 h-8 px-2 rounded text-sm font-semibold ${n === pagina ? 'bg-primary text-white' : 'text-on-surface hover:bg-surface-container-low'}">${n}</button>`).join('');
-  return `<div class="px-6 py-3 border-t border-border-subtle flex flex-wrap gap-3 justify-between items-center bg-surface"><p class="text-table-data text-on-surface-variant">Mostrando ${inicio}–${fim} de ${totalItens}</p><div class="flex items-center gap-1"><button type="button" onclick="${funcao}(${pagina - 1})" ${pagina === 1 ? 'disabled' : ''} class="w-8 h-8 rounded border border-border-subtle disabled:opacity-40 hover:bg-surface-container-low"><span class="material-symbols-outlined text-sm">chevron_left</span></button>${botoes}<button type="button" onclick="${funcao}(${pagina + 1})" ${pagina === totalPaginas ? 'disabled' : ''} class="w-8 h-8 rounded border border-border-subtle disabled:opacity-40 hover:bg-surface-container-low"><span class="material-symbols-outlined text-sm">chevron_right</span></button></div></div>`;
+  const setaAnterior = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
+  const setaProxima = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+  return `<div class="modern-pagination flex flex-wrap gap-3 justify-between items-center"><p class="text-table-data text-on-surface-variant">Mostrando ${inicio}–${fim} de ${totalItens}</p><div class="flex items-center gap-1"><button type="button" aria-label="Página anterior" onclick="${funcao}(${pagina - 1})" ${pagina === 1 ? 'disabled' : ''} class="w-8 h-8 border border-border-subtle disabled:opacity-40 hover:bg-surface-container-low inline-flex items-center justify-center">${setaAnterior}</button>${botoes}<button type="button" aria-label="Próxima página" onclick="${funcao}(${pagina + 1})" ${pagina === totalPaginas ? 'disabled' : ''} class="w-8 h-8 border border-border-subtle disabled:opacity-40 hover:bg-surface-container-low inline-flex items-center justify-center">${setaProxima}</button></div></div>`;
 }
 
 function escapeHtml(value) {
@@ -173,6 +440,167 @@ function bindCpfMask(input) {
     }
   });
 }
+
+// Select pesquisável compartilhado: mantém o <select> original como fonte do
+// valor e adiciona uma interface acessível, ordenada e filtrável.
+function normalizeSearchText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR')
+    .trim();
+}
+
+function enhanceSearchableSelect(select) {
+  if (!select || select.dataset.searchableEnhanced === 'true' || select.multiple) return;
+  select.dataset.searchableEnhanced = 'true';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = `relative min-w-0 ${select.classList.contains('w-full') ? 'w-full' : ''} ${select.classList.contains('flex-1') ? 'flex-1' : ''}`;
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.appendChild(select);
+  select.classList.add('sr-only');
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = `${select.className.replace(/\bsr-only\b/g, '')} min-w-0 text-left flex items-center justify-between gap-2`;
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.innerHTML = '<span class="truncate"></span><span class="material-symbols-outlined shrink-0">expand_more</span>';
+  wrapper.appendChild(trigger);
+
+  const menu = document.createElement('div');
+  menu.className = 'searchable-select-menu fixed z-[100] hidden overflow-hidden rounded-lg border border-border-subtle bg-surface';
+  menu.innerHTML = `
+    <div class="sticky top-0 z-10 bg-surface p-2 border-b border-border-subtle">
+      <div class="relative">
+        <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+        <input type="search" placeholder="Buscar..." class="searchable-select-search w-full rounded-md border border-border-subtle py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary">
+      </div>
+    </div>
+    <div class="searchable-select-options overflow-y-auto py-1" role="listbox"></div>`;
+  document.body.appendChild(menu);
+  const search = menu.querySelector('.searchable-select-search');
+  const optionsBox = menu.querySelector('.searchable-select-options');
+
+  function sortedOptions() {
+    const all = Array.from(select.options);
+    const placeholders = all.filter(option => !option.value);
+    const values = all.filter(option => option.value).sort((a, b) =>
+      a.textContent.trim().localeCompare(b.textContent.trim(), 'pt-BR', { sensitivity: 'base', numeric: true })
+    );
+    const ordered = [...placeholders, ...values];
+    if (ordered.some((option, index) => option !== all[index])) ordered.forEach(option => select.appendChild(option));
+    return ordered;
+  }
+
+  function syncTrigger() {
+    const selected = select.options[select.selectedIndex];
+    trigger.querySelector('span').textContent = selected ? (selected.dataset.triggerLabel || selected.textContent.trim()) : 'Selecione...';
+    trigger.disabled = select.disabled;
+    trigger.setAttribute('aria-expanded', menu.classList.contains('hidden') ? 'false' : 'true');
+  }
+
+  function renderOptions(query = '') {
+    const normalizedQuery = normalizeSearchText(query);
+    const filtered = sortedOptions().filter(option =>
+      !normalizedQuery || normalizeSearchText(option.textContent).includes(normalizedQuery)
+    );
+    optionsBox.innerHTML = filtered.map(option => `
+      <button type="button" role="option" class="searchable-select-option block w-full px-3 py-2 text-left text-sm hover:bg-surface-container-low disabled:opacity-50"
+        data-value="${escapeHtml(option.value)}" aria-selected="${String(option.value) === String(select.value)}" ${option.disabled ? 'disabled' : ''}>
+        ${escapeHtml(option.textContent.trim())}
+      </button>`).join('') || '<p class="px-3 py-3 text-sm text-on-surface-variant">Nenhuma opção encontrada.</p>';
+  }
+
+  function positionMenu() {
+    const rect = trigger.getBoundingClientRect();
+    const below = window.innerHeight - rect.bottom;
+    const openAbove = below < 220 && rect.top > below;
+    const available = openAbove ? rect.top : below;
+    const maxHeight = Math.max(180, Math.min(360, available - 12));
+    const medidor = document.createElement('canvas').getContext('2d');
+    medidor.font = window.getComputedStyle(trigger).font;
+    const larguraMaiorOpcao = Array.from(select.options).reduce((maior, option) =>
+      Math.max(maior, medidor.measureText(option.textContent.trim()).width), 0);
+    const menuWidth = Math.min(Math.max(rect.width, Math.ceil(larguraMaiorOpcao + 48)), window.innerWidth - 16);
+    const menuLeft = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - menuWidth - 8));
+    menu.style.left = `${menuLeft}px`;
+    menu.style.top = `${openAbove ? Math.max(8, rect.top - maxHeight - 4) : rect.bottom + 4}px`;
+    menu.style.width = `${menuWidth}px`;
+    menu.style.maxHeight = `${maxHeight}px`;
+    optionsBox.style.maxHeight = `${maxHeight - 58}px`;
+  }
+
+  function closeMenu() {
+    menu.classList.add('hidden');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  function openMenu() {
+    document.querySelectorAll('.searchable-select-menu:not(.hidden)').forEach(other => {
+      if (other !== menu) other.classList.add('hidden');
+    });
+    syncTrigger();
+    renderOptions('');
+    positionMenu();
+    menu.classList.remove('hidden');
+    trigger.setAttribute('aria-expanded', 'true');
+    search.value = '';
+    setTimeout(() => search.focus(), 0);
+  }
+
+  trigger.addEventListener('click', () => menu.classList.contains('hidden') ? openMenu() : closeMenu());
+  search.addEventListener('input', () => renderOptions(search.value));
+  search.addEventListener('keydown', event => { if (event.key === 'Escape') { closeMenu(); trigger.focus(); } });
+  optionsBox.addEventListener('click', event => {
+    const option = event.target.closest('[data-value]');
+    if (!option) return;
+    select.value = option.dataset.value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    syncTrigger();
+    closeMenu();
+    trigger.focus();
+  });
+  select.addEventListener('change', syncTrigger);
+  select.addEventListener('invalid', event => {
+    event.preventDefault();
+    openMenu();
+  });
+  window.addEventListener('resize', () => { if (!menu.classList.contains('hidden')) positionMenu(); });
+  window.addEventListener('scroll', event => {
+    if (!menu.contains(event.target)) closeMenu();
+  }, true);
+  document.addEventListener('click', event => {
+    if (!wrapper.contains(event.target) && !menu.contains(event.target)) closeMenu();
+  });
+
+  const valueDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+  if (valueDescriptor && valueDescriptor.get && valueDescriptor.set) {
+    Object.defineProperty(select, 'value', {
+      configurable: true,
+      get() { return valueDescriptor.get.call(this); },
+      set(value) { valueDescriptor.set.call(this, value); syncTrigger(); }
+    });
+  }
+  new MutationObserver(() => { renderOptions(search.value); syncTrigger(); })
+    .observe(select, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['disabled'] });
+  select.form?.addEventListener('reset', () => setTimeout(syncTrigger, 0));
+  renderOptions();
+  syncTrigger();
+}
+
+function enhanceAllSearchableSelects(root = document) {
+  root.querySelectorAll('select').forEach(enhanceSearchableSelect);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  enhanceAllSearchableSelects();
+  new MutationObserver(mutations => mutations.forEach(mutation => mutation.addedNodes.forEach(node => {
+    if (!(node instanceof Element)) return;
+    if (node.matches('select')) enhanceSearchableSelect(node);
+    enhanceAllSearchableSelects(node);
+  }))).observe(document.body, { childList: true, subtree: true });
+});
 
 async function downloadPdfFromResponse(res, fallbackName = 'ASO.pdf') {
   if (!res.ok) {

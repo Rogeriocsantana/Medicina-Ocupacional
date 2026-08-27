@@ -6,6 +6,8 @@ const path = require('path');
 const express = require('express');
 const { exec } = require('child_process');
 const db = require('./services/mysqlService');
+const backupService = require('./services/backupService');
+const { runMigrations } = require('./services/migrationService');
 const { getResourceRoot, getDataRoot, isPackaged } = require('./paths');
 const { BASE_PATH, baseUrl } = require('./config');
 
@@ -66,7 +68,7 @@ function createApplication() {
   });
   application.use('/api', require('./routes/api'));
 
-  if (!isPackaged() && process.env.NODE_ENV !== 'production') {
+  if (!isPackaged() && process.env.ENABLE_DEBUG_DUMP === 'true') {
     application.get('/api/debug/dump', async (req, res) => {
       try {
         const sheets = Object.keys(db.SCHEMAS);
@@ -86,9 +88,11 @@ function createApplication() {
     '/riscos': 'riscos',
     '/exames-complementares': 'exames-complementares',
     '/funcionarios': 'funcionarios',
+    '/importar-funcionarios': 'importar-funcionarios',
     '/relacionamento': 'relacionamento',
     '/gerar-pdf': 'gerar-pdf',
     '/historico': 'historico',
+    '/perguntas-anamnese': 'perguntas-anamnese',
     '/configuracoes': 'configuracoes'
   };
   Object.entries(pages).forEach(([route, view]) => {
@@ -111,7 +115,12 @@ function createApplication() {
 }
 
 async function start() {
+  if (process.env.RUN_DB_MIGRATIONS === 'true') {
+    const migrations = await runMigrations(db.pool);
+    if (migrations.length) console.log(`Migrações aplicadas: ${migrations.join(', ')}`);
+  }
   await db.ensureDb();
+  backupService.iniciarAgendador();
   const app = createApplication();
 
   app.listen(PORT, HOST, () => {

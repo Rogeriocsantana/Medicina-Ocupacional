@@ -30,9 +30,7 @@ function resolveLogoPath() {
 }
 
 function formatDataExtenso(date = new Date(), cidade = 'Campinas') {
-  const d = dayjs(date);
-  const cidadeBase = String(cidade || 'Campinas').split('/')[0].trim() || 'Campinas';
-  return `${cidadeBase}, ${d.date()} de ${MESES_PT[d.month()]} de ${d.year()}`;
+  return 'Campinas, ____ de __________________ de 2026';
 }
 
 function formatDateBR(value) {
@@ -248,10 +246,17 @@ function gerarAsoPdf({
       if (!riscosPorGrupo[r.Grupo]) riscosPorGrupo[r.Grupo] = [];
       riscosPorGrupo[r.Grupo].push(r.Descricao);
     });
+    const gruposPresentes = Object.keys(riscosPorGrupo);
+    const gruposOrdenados = [
+      ...GRUPOS_ORDEM.filter(grupo => gruposPresentes.includes(grupo)),
+      ...gruposPresentes
+        .filter(grupo => !GRUPOS_ORDEM.includes(grupo))
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    ];
 
     // Estimar altura
     let riscosContentH = 8;
-    GRUPOS_ORDEM.forEach(grupo => {
+    gruposOrdenados.forEach(grupo => {
       if (riscosPorGrupo[grupo] && riscosPorGrupo[grupo].length) riscosContentH += 14;
     });
     if (!Object.keys(riscosPorGrupo).length) riscosContentH += 14;
@@ -262,7 +267,7 @@ function gerarAsoPdf({
     cy = sectionTitle('RISCOS OCUPACIONAIS ESPECÍFICOS', riscoTop, left, pageWidth);
     let ry = cy + 5;
     doc.font('Helvetica').fontSize(8);
-    GRUPOS_ORDEM.forEach(grupo => {
+    gruposOrdenados.forEach(grupo => {
       const desc = riscosPorGrupo[grupo];
       if (!desc || !desc.length) return;
       ry = ensureSpace(ry, 20);
@@ -364,12 +369,228 @@ function gerarAsoPdf({
   });
 }
 
+function gerarFichaClinicaPdf({
+  colaborador,
+  config = {},
+  perguntasAdmissionais = [],
+  dataDocumento = new Date()
+}) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 32, bufferPages: true });
+    const chunks = [];
+    doc.on('data', chunk => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    const left = doc.page.margins.left;
+    const width = doc.page.width - left - doc.page.margins.right;
+    const bottom = doc.page.height - doc.page.margins.bottom;
+    const tipo = String(colaborador.tipoExame || '').toLowerCase();
+    const admissional = tipo === 'admissional';
+    const stroke = '#111827';
+
+    function caixa(x, y, w, h, fill = null) {
+      if (fill) {
+        doc.rect(x, y, w, h).fillAndStroke(fill, stroke);
+        doc.fillColor('#111827');
+      }
+      else doc.rect(x, y, w, h).stroke(stroke);
+    }
+    function linha(x1, y1, x2, y2, espessura = 0.8) {
+      doc.save().strokeColor(stroke).lineWidth(espessura).moveTo(x1, y1).lineTo(x2, y2).stroke().restore();
+    }
+    function linhaPreenchimento(x1, y1, x2, espessura = 0.65) {
+      doc.save().fillColor(stroke).rect(x1, y1, Math.max(0, x2 - x1), espessura).fill().restore();
+    }
+    function marcado(chave) { return tipo === chave ? 'X' : ' '; }
+    function cabecalho(continuacao = false) {
+      let y = doc.page.margins.top;
+      caixa(left, y, width, 42, '#f3f4f6');
+      const logo = resolveLogoPath();
+      if (logo) doc.image(logo, left + 7, y + 7, { fit: [120, 28] });
+      doc.fillColor('#111827').font('Helvetica-Bold').fontSize(15)
+        .text(`ANAMNESE CLÍNICA${continuacao ? ' - CONTINUAÇÃO' : ''}`, left + 130, y + 12, { width: width - 140, align: 'center' });
+      y += 46;
+      if (continuacao) return y;
+      caixa(left, y, width, 58);
+      const half = width / 2;
+      linha(left, y + 20, left + width, y + 20);
+      linha(left, y + 39, left + width, y + 39);
+      linha(left + half, y + 20, left + half, y + 58);
+      doc.font('Helvetica-Bold').fontSize(8).text('Nome: ', left + 5, y + 6, { continued: true });
+      doc.font('Helvetica').text(colaborador.nome || '');
+      doc.font('Helvetica-Bold').text('Função: ', left + 5, y + 26, { continued: true });
+      doc.font('Helvetica').text(colaborador.cargoNome || '', { width: half - 55 });
+      doc.font('Helvetica-Bold').text('D.N.: ', left + half + 5, y + 26, { continued: true });
+      doc.font('Helvetica').text(formatDateBR(colaborador.dataNascimento));
+      doc.font('Helvetica-Bold').text('Setor: ', left + 5, y + 45, { continued: true });
+      doc.font('Helvetica').text(colaborador.setorNome || '', { width: half - 50 });
+      doc.font('Helvetica-Bold').text('CPF: ', left + half + 5, y + 45, { continued: true });
+      doc.font('Helvetica').text(colaborador.cpf || '');
+      y += 62;
+      caixa(left, y, width, 25);
+      doc.font('Helvetica').fontSize(7.5).text(
+        `[${marcado('admissional')}] Admissional    [${marcado('periodico')}] Periódico    ` +
+        `[${marcado('retorno')}] Retorno ao Trabalho    [${marcado('mudanca')}] Mudança de Risco Ocupacional    ` +
+        `[${marcado('demissional')}] Demissional`,
+        left + 7, y + 8, { width: width - 14, align: 'center' }
+      );
+      return y + 29;
+    }
+
+    function renderHistoricoClinicoOcupacional() {
+      doc.font('Helvetica-Bold').fontSize(9).text('HISTÓRICO CLÍNICO / OCUPACIONAL', left, y + 2, { width, align: 'center' });
+      y += 24;
+      doc.font('Helvetica').fontSize(8);
+      function campoSublinhado(rotulo, altura = 24) {
+        doc.text(`${rotulo}:`, left, y + 2);
+        const inicioLinha = left + doc.widthOfString(`${rotulo}:`) + 4;
+        linhaPreenchimento(inicioLinha, y + 12, left + width);
+        y += altura;
+      }
+
+      campoSublinhado('Queixas');
+      campoSublinhado('AP');
+      campoSublinhado('Medicamentos');
+      campoSublinhado('Antecedentes Psiquiátricos');
+
+      y += 6;
+      doc.text('G', left, y + 2);
+      linhaPreenchimento(left + 14, y + 12, left + 48);
+      doc.text('P', left + 66, y + 2);
+      linhaPreenchimento(left + 80, y + 12, left + 114);
+      doc.text('A', left + 132, y + 2);
+      linhaPreenchimento(left + 146, y + 12, left + 180);
+      const dumX = left + 205;
+      doc.text('DUM:', dumX, y + 2);
+      linhaPreenchimento(dumX + 31, y + 12, dumX + 59);
+      doc.text('/', dumX + 63, y + 2);
+      linhaPreenchimento(dumX + 72, y + 12, dumX + 100);
+      doc.text('/', dumX + 104, y + 2);
+      linhaPreenchimento(dumX + 113, y + 12, dumX + 151);
+      const macX = left + 365;
+      doc.text('MAC:', macX, y + 2);
+      linhaPreenchimento(macX + 31, y + 12, left + width);
+      y += 34;
+
+      [
+        'Cirurgias prévias', 'Fraturas', 'Alergias', 'Tabagismo', 'Etilismo',
+        'Atividade Física', 'Histórico Laboral', 'Afastamento INSS',
+        'Acidente de Trabalho'
+      ].forEach(rotulo => campoSublinhado(rotulo));
+
+      campoSublinhado('Exames Laboratoriais', 30);
+      linhaPreenchimento(left, y + 6, left + width);
+      y += 30;
+      linhaPreenchimento(left, y, left + width, 1.1);
+      y += 18;
+      campoSublinhado('Exame Físico', 30);
+      linhaPreenchimento(left, y + 6, left + width);
+      y += 18;
+
+      doc.font('Helvetica').fontSize(8).text('(     ) Destro       (     ) Canhoto', left, y);
+      doc.text('SSVV', left + width * 0.67, y, { width: width * 0.33, align: 'center' });
+      y += 19;
+      const sinais = ['AR', 'ACV', 'Abdômen', 'Osteomuscular', 'Outros'];
+      const vitais = ['Peso', 'Altura', 'PA', 'Saturação'];
+      const colunaDireita = left + width * 0.59;
+      const fimLinhaEsquerda = left + width * 0.45;
+      const fimLinhaDireita = left + width;
+      sinais.forEach((campo, index) => {
+        const linhaY = y + index * 19 + 10;
+        doc.text(`${campo}:`, left, y + index * 19);
+        const inicioEsquerda = left + doc.widthOfString(`${campo}:`) + 4;
+        linhaPreenchimento(inicioEsquerda, linhaY, fimLinhaEsquerda);
+        if (vitais[index]) {
+          doc.text(`${vitais[index]}:`, colunaDireita, y + index * 19);
+          const inicioDireita = colunaDireita + doc.widthOfString(`${vitais[index]}:`) + 4;
+          linhaPreenchimento(inicioDireita, linhaY, fimLinhaDireita);
+        }
+      });
+      y += 107;
+      linhaPreenchimento(left + width * 0.58, y, left + width, 0.8);
+      doc.fontSize(7).text(
+        `${config.Medico || 'Médico examinador'} - ${config.CRM || ''}`,
+        left + width * 0.58, y + 4, { width: width * 0.42, align: 'center' }
+      );
+      doc.fontSize(8).text('Campinas, ______ de __________________________ de 2026.', left, y - 6, { width: width * 0.5 });
+    }
+
+    let y = cabecalho();
+    if (admissional) {
+      const colPergunta = width * 0.49;
+      const colSim = 34;
+      const colNao = 34;
+      const colComp = width - colPergunta - colSim - colNao;
+      function tituloTabela() {
+        caixa(left, y, width, 19, '#e5e7eb');
+        linha(left + colPergunta, y, left + colPergunta, y + 19);
+        linha(left + colPergunta + colSim, y, left + colPergunta + colSim, y + 19);
+        linha(left + colPergunta + colSim + colNao, y, left + colPergunta + colSim + colNao, y + 19);
+        doc.font('Helvetica-Bold').fontSize(7).text('PERGUNTA', left + 4, y + 6, { width: colPergunta - 8 });
+        doc.text('SIM', left + colPergunta, y + 6, { width: colSim, align: 'center' });
+        doc.text('NÃO', left + colPergunta + colSim, y + 6, { width: colNao, align: 'center' });
+        doc.text('COMPLEMENTO', left + colPergunta + colSim + colNao + 4, y + 6, { width: colComp - 8 });
+        y += 19;
+      }
+      tituloTabela();
+      for (const item of perguntasAdmissionais) {
+        doc.font('Helvetica').fontSize(6.3);
+        const h = 17;
+        if (y + h > bottom - 72) {
+          doc.addPage();
+          y = cabecalho(true);
+          tituloTabela();
+        }
+        caixa(left, y, width, h);
+        linha(left + colPergunta, y, left + colPergunta, y + h);
+        linha(left + colPergunta + colSim, y, left + colPergunta + colSim, y + h);
+        linha(left + colPergunta + colSim + colNao, y, left + colPergunta + colSim + colNao, y + h);
+        doc.text(String(item.Pergunta || ''), left + 4, y + 4.5, { width: colPergunta - 8, lineBreak: false });
+        doc.fontSize(8).text('(   )', left + colPergunta, y + 4, { width: colSim, align: 'center' });
+        doc.text('(   )', left + colPergunta + colSim, y + 5, { width: colNao, align: 'center' });
+        doc.fontSize(6.1).text(item.Complemento || '', left + colPergunta + colSim + colNao + 4, y + 4.5, { width: colComp - 8, lineBreak: false });
+        y += h;
+      }
+      if (y + 67 > bottom) { doc.addPage(); y = cabecalho(true); }
+      y += 7;
+      doc.font('Helvetica').fontSize(7.5).text(
+        'Declaro que as informações acima prestadas são totalmente verdadeiras.',
+        left, y, { width, align: 'center' }
+      );
+      y += 54;
+      linhaPreenchimento(left + width * 0.58, y, left + width, 0.8);
+      doc.fontSize(7).text('Campinas, ______ de __________________________ de 2026.', left, y - 5, { width: width * 0.52 });
+      doc.text('Assinatura do Profissional', left + width * 0.58, y + 4, { width: width * 0.42, align: 'center' });
+
+      // O modelo admissional possui uma segunda folha clínica além do questionário.
+      doc.addPage();
+      y = cabecalho();
+      renderHistoricoClinicoOcupacional();
+    } else {
+      renderHistoricoClinicoOcupacional();
+    }
+
+    doc.end();
+  });
+}
+
 function nomeArquivoAso(nome, data = new Date()) {
   const slug = String(nome || 'ASO')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
   return `ASO_${slug}_${dayjs(data).format('YYYYMMDD_HHmmss')}.pdf`;
+}
+
+function nomeArquivoFichaClinica(nome, tipoExame, data = new Date()) {
+  const slug = String(nome || 'Colaborador')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const tipo = String(tipoExame || 'anamnese')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return `Ficha_Clinica_${tipo}_${slug}_${dayjs(data).format('YYYYMMDD_HHmmss')}.pdf`;
 }
 
 function parseExamesDatas(raw) {
@@ -385,7 +606,9 @@ function parseExamesDatas(raw) {
 
 module.exports = {
   gerarAsoPdf,
+  gerarFichaClinicaPdf,
   nomeArquivoAso,
+  nomeArquivoFichaClinica,
   formatDataExtenso,
   formatDateBR,
   parseExamesDatas,

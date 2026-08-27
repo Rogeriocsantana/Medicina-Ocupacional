@@ -170,8 +170,8 @@ function preencherFuncionario(func) {
   document.getElementById('buscaFuncionario').value = func.Nome || '';
   document.getElementById('lista-funcionarios').classList.add('hidden');
   mostrarFuncionarioSelecionado(func);
-  atualizarPreviewRiscos(func.CargoID);
-  atualizarExamesDoCargo(func.CargoID);
+  atualizarPreviewRiscos(func.CargoID, func.SetorID);
+  atualizarExamesDoCargo(func.CargoID, func.SetorID, document.getElementById('tipoExame').value);
 }
 
 async function buscarFuncionarios(termo) {
@@ -236,7 +236,7 @@ function abrirPainelOpcional() {
 function renderExamesDatas(valores = {}) {
   const box = document.getElementById('lista-exames-datas');
   if (!examesCadastro.length) {
-    box.innerHTML = '<p class="text-on-surface-variant text-body-md">Nenhum exame complementar vinculado a este setor.</p>';
+    box.innerHTML = '<p class="text-on-surface-variant text-body-md">Nenhum exame complementar vinculado a este cargo.</p>';
     return;
   }
   box.innerHTML = examesCadastro.map(ex => {
@@ -249,14 +249,15 @@ function renderExamesDatas(valores = {}) {
   }).join('');
 }
 
-async function atualizarExamesDoCargo(cargoId, valores = {}) {
+async function atualizarExamesDoCargo(cargoId, setorId, tipoExame, valores = {}) {
   if (!cargoId) {
     examesCadastro = [];
     renderExamesDatas(valores);
     return;
   }
   try {
-    const vinculo = await api(`cargo-exame/${cargoId}`);
+    const query = new URLSearchParams({ setorId, tipo: tipoExame || 'admissional' });
+    const vinculo = await api(`cargo-exame/${cargoId}?${query}`);
     const ids = new Set(vinculo.exameIds.map(String));
     examesCadastro = todosExames.filter(exame => ids.has(String(exame.ID)));
     renderExamesDatas(valores);
@@ -267,18 +268,23 @@ async function atualizarExamesDoCargo(cargoId, valores = {}) {
   }
 }
 
-async function atualizarPreviewRiscos(cargoId) {
+async function atualizarPreviewRiscos(cargoId, setorId) {
   const preview = document.getElementById('preview-riscos');
   const conteudo = document.getElementById('preview-riscos-conteudo');
   if (!cargoId) { preview.classList.add('hidden'); return; }
   try {
-    const vinculo = await api(`cargo-risco/${cargoId}`);
+    const vinculo = await api(`cargo-risco/${cargoId}?setorId=${encodeURIComponent(setorId || '')}`);
     const ids = new Set(vinculo.riscoIds.map(String));
     const selecionados = todosRiscos.filter(r => ids.has(String(r.ID)));
     if (!selecionados.length) {
       conteudo.innerHTML = '<p class="text-on-surface-variant">Nenhum risco vinculado a este cargo ainda. Configure em "Relacionamento".</p>';
     } else {
-      conteudo.innerHTML = ORDEM_GRUPOS.map(g => {
+      const gruposPresentes = [...new Set(selecionados.map(r => r.Grupo))];
+      const gruposOrdenados = [
+        ...ORDEM_GRUPOS.filter(g => gruposPresentes.includes(g)),
+        ...gruposPresentes.filter(g => !ORDEM_GRUPOS.includes(g)).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      ];
+      conteudo.innerHTML = gruposOrdenados.map(g => {
         const doGrupo = selecionados.filter(r => r.Grupo === g);
         if (!doGrupo.length) return '';
         return `<p><strong>${escapeHtml(g)}:</strong> ${doGrupo.map(r => escapeHtml(r.Descricao)).join(' ')}</p>`;
@@ -305,10 +311,11 @@ async function carregarSelects() {
     setores.map(s => `<option value="${s.ID}">${escapeHtml(s.Nome)}</option>`).join('');
   document.getElementById('cargoId').innerHTML = '<option value="">Selecione...</option>' +
     cargos.map(c => `<option value="${c.ID}">${escapeHtml(c.Nome)}</option>`).join('');
-  document.getElementById('tipoExame').innerHTML = tipos.length
-    ? tipos.map(t => `<option value="${escapeHtml(t.Chave)}">${escapeHtml(t.Nome)}</option>`).join('')
+  const tiposSelecionaveis = tipos.filter(t => Number(t.SelecionavelASO) !== 0);
+  document.getElementById('tipoExame').innerHTML = tiposSelecionaveis.length
+    ? tiposSelecionaveis.map(t => `<option value="${escapeHtml(t.Chave)}">${escapeHtml(t.Nome)}</option>`).join('')
     : '<option value="admissional">Admissional</option>';
-  await atualizarExamesDoCargo(document.getElementById('cargoId').value);
+  await atualizarExamesDoCargo(document.getElementById('cargoId').value, document.getElementById('setorId').value, document.getElementById('tipoExame').value);
 }
 
 async function carregarParaEdicao(id) {
@@ -323,7 +330,7 @@ async function carregarParaEdicao(id) {
   document.getElementById('tipoExame').value = reg.TipoExame || 'admissional';
   document.getElementById('dataAvaliacaoClinica').value = reg.DataAvaliacaoClinica || '';
 
-  await atualizarExamesDoCargo(reg.CargoID, reg.ExamesDatas || {});
+  await atualizarExamesDoCargo(reg.CargoID, reg.SetorID, reg.TipoExame || 'admissional', reg.ExamesDatas || {});
 
   const conc = reg.Conclusao || '';
   const radio = document.querySelector(`input[name="conclusao"][value="${conc}"]`);
@@ -344,12 +351,20 @@ async function carregarParaEdicao(id) {
   if (funcVinculado) mostrarFuncionarioSelecionado(funcVinculado);
   else limparFuncionarioSelecionado();
 
-  await atualizarPreviewRiscos(reg.CargoID);
+  await atualizarPreviewRiscos(reg.CargoID, reg.SetorID);
 }
 
 document.getElementById('cargoId').addEventListener('change', (e) => {
-  atualizarPreviewRiscos(e.target.value);
-  atualizarExamesDoCargo(e.target.value);
+  const setorId = document.getElementById('setorId').value;
+  atualizarPreviewRiscos(e.target.value, setorId);
+  atualizarExamesDoCargo(e.target.value, setorId, document.getElementById('tipoExame').value);
+});
+document.getElementById('tipoExame').addEventListener('change', () => {
+  atualizarExamesDoCargo(
+    document.getElementById('cargoId').value,
+    document.getElementById('setorId').value,
+    document.getElementById('tipoExame').value
+  );
 });
 
 document.getElementById('form-pdf').addEventListener('submit', async (e) => {
@@ -418,7 +433,12 @@ document.getElementById('form-pdf').addEventListener('submit', async (e) => {
         body: JSON.stringify(payload)
       });
       await downloadPdfFromResponse(res, 'ASO.pdf');
-      toast('ASO gerado e baixado. Dados salvos no histórico.');
+      const historicoGeradoId = res.headers.get('X-Historico-ID');
+      if (historicoGeradoId) {
+        const ficha = await fetch(apiUrl(`historico/${historicoGeradoId}/ficha-clinica`), { cache: 'no-store' });
+        await downloadPdfFromResponse(ficha, 'Ficha_clinica.pdf');
+      }
+      toast('ASO e ficha clínica gerados em dois PDFs. Dados salvos no histórico.');
       document.getElementById('form-pdf').reset();
       document.getElementById('historicoId').value = '';
       limparFuncionarioSelecionado();

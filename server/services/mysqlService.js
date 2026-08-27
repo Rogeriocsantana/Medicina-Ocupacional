@@ -19,6 +19,7 @@ const DB_CONFIG = {
 
 const pool = mysql.createPool(DB_CONFIG);
 const DB_DESCRIPTION = `mysql://${DB_CONFIG.host}:${DB_CONFIG.port}/${DB_CONFIG.database}`;
+const REQUIRED_SCHEMA_VERSION = '010_perguntas_anamnese';
 
 const DEFAULT_CONFIG = {
   RazaoSocial: '',
@@ -39,20 +40,20 @@ const DEFAULT_CONFIG = {
 const SCHEMAS = {
   Setores: ['ID', 'Nome'],
   Cargos: ['ID', 'Nome'],
-  Riscos: ['ID', 'Grupo', 'Descricao'],
+  Riscos: ['ID', 'Grupo', 'Descricao', 'Agravos'],
   GruposRisco: ['ID', 'Nome', 'Cor', 'Ordem'],
   Cargo_Risco: ['ID', 'CargoID', 'RiscoID'],
   Cargo_Exame: ['ID', 'CargoID', 'ExameID'],
   Empresas: ['ID', 'RazaoSocial', 'CNPJ', 'Endereco', 'Bairro', 'CidadeUf', 'Cep', 'Telefone'],
-  Funcionarios: ['ID', 'Nome', 'CPF', 'DataNascimento', 'SetorID', 'CargoID', 'EmpresaID'],
+  Funcionarios: ['ID', 'Nome', 'CPF', 'DataNascimento', 'DataAdmissao', 'UltimoExame', 'Vencimento', 'ObservacaoCondicao', 'Condicao', 'Status', 'Situacao', 'SetorID', 'CargoID', 'EmpresaID'],
   HistoricoPDF: [
-    'ID', 'Nome', 'CPF', 'DataNascimento', 'Cargo', 'Setor',
+    'ID', 'FuncionarioID', 'Nome', 'CPF', 'DataNascimento', 'Cargo', 'Setor',
     'DataGeracao', 'ArquivoPDF', 'TipoExame', 'CargoID', 'SetorID',
     'Conclusao', 'ExamesDatas', 'DataAvaliacaoClinica', 'RiscosSnapshot',
-    'DocumentoSnapshot', 'EmpresaID', 'Empresa'
+    'DocumentoSnapshot', 'ControleFuncionarioAnterior', 'EmpresaID', 'Empresa'
   ],
-  ConfigGeral: ['ID', 'HospitalNome', 'Medico', 'CRM', 'Especialidade', 'RQE', 'IconeMedico'],
-  TiposExame: ['ID', 'Chave', 'Nome', 'Ordem'],
+  ConfigGeral: ['ID', 'HospitalNome', 'Medico', 'CRM', 'Especialidade', 'RQE', 'IconeMedico', 'BackupIntervaloDias', 'UltimoBackupEm'],
+  TiposExame: ['ID', 'Chave', 'Nome', 'Ordem', 'SelecionavelASO'],
   ExamesComplementares: ['ID', 'Nome', 'Ordem']
 };
 
@@ -90,31 +91,35 @@ const MODELS = {
   },
   TiposExame: {
     table: 'tipos_exame',
-    fields: { ID: 'id', Chave: 'chave', Nome: 'nome', Ordem: 'ordem' }
+    fields: { ID: 'id', Chave: 'chave', Nome: 'nome', Ordem: 'ordem', SelecionavelASO: 'selecionavel_aso' }
   },
   Funcionarios: {
     table: 'funcionarios',
     fields: {
       ID: 'id', Nome: 'nome', CPF: 'cpf', DataNascimento: 'data_nascimento',
+      DataAdmissao: 'data_admissao', UltimoExame: 'ultimo_exame', Vencimento: 'vencimento',
+      ObservacaoCondicao: 'observacao_condicao', Condicao: 'condicao', Status: 'status', Situacao: 'situacao',
       SetorID: 'setor_id', CargoID: 'cargo_id', EmpresaID: 'empresa_id'
     }
   },
   HistoricoPDF: {
     table: 'historico_aso',
     fields: {
-      ID: 'id', Nome: 'nome', CPF: 'cpf', DataNascimento: 'data_nascimento',
+      ID: 'id', FuncionarioID: 'funcionario_id', Nome: 'nome', CPF: 'cpf', DataNascimento: 'data_nascimento',
       Cargo: 'cargo', Setor: 'setor', DataGeracao: 'data_geracao',
       ArquivoPDF: 'arquivo_pdf', TipoExame: 'tipo_exame', CargoID: 'cargo_id',
       SetorID: 'setor_id', Conclusao: 'conclusao', ExamesDatas: 'exames_datas',
       DataAvaliacaoClinica: 'data_avaliacao_clinica', RiscosSnapshot: 'riscos_snapshot',
-      DocumentoSnapshot: 'documento_snapshot', EmpresaID: 'empresa_id', Empresa: 'empresa'
+      DocumentoSnapshot: 'documento_snapshot', ControleFuncionarioAnterior: 'controle_funcionario_anterior',
+      EmpresaID: 'empresa_id', Empresa: 'empresa'
     }
   },
   ConfigGeral: {
     table: 'config_geral',
     fields: {
       ID: 'id', HospitalNome: 'hospital_nome', Medico: 'medico', CRM: 'crm',
-      Especialidade: 'especialidade', RQE: 'rqe', IconeMedico: 'icone_medico'
+      Especialidade: 'especialidade', RQE: 'rqe', IconeMedico: 'icone_medico',
+      BackupIntervaloDias: 'backup_intervalo_dias', UltimoBackupEm: 'ultimo_backup_em'
     }
   }
 };
@@ -138,7 +143,7 @@ function normalizeJsonOutput(sheetName, row) {
     const parsed = dayjs(String(row.DataGeracao));
     if (parsed.isValid()) row.DataGeracao = parsed.format('DD/MM/YYYY HH:mm');
   }
-  for (const field of ['ExamesDatas', 'RiscosSnapshot', 'DocumentoSnapshot']) {
+  for (const field of ['ExamesDatas', 'RiscosSnapshot', 'DocumentoSnapshot', 'ControleFuncionarioAnterior']) {
     if (row[field] !== null && row[field] !== undefined && typeof row[field] === 'object') {
       row[field] = JSON.stringify(row[field]);
     }
@@ -158,7 +163,7 @@ function normalizeInput(sheetName, apiField, value) {
     return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm:ss') : value;
   }
   if (sheetName === 'HistoricoPDF' &&
-      ['ExamesDatas', 'RiscosSnapshot', 'DocumentoSnapshot'].includes(apiField)) {
+      ['ExamesDatas', 'RiscosSnapshot', 'DocumentoSnapshot', 'ControleFuncionarioAnterior'].includes(apiField)) {
     if (value === '' || value === undefined) return null;
     return typeof value === 'string' ? value : JSON.stringify(value);
   }
@@ -170,7 +175,16 @@ async function ensureDb() {
   const connection = await pool.getConnection();
   try {
     await connection.query('SELECT 1');
-    const required = Object.values(MODELS).map(model => model.table);
+    const required = [
+      ...Object.values(MODELS).map(model => model.table),
+      'riscos',
+      'perfis_ocupacionais',
+      'perfil_risco',
+      'perfil_exame_regra',
+      'importacoes_funcionarios',
+      'importacao_empresa_mapeamentos',
+      'importacao_funcionarios_itens'
+    ];
     const [rows] = await connection.query(
       `SELECT table_name
          FROM information_schema.tables
@@ -182,6 +196,28 @@ async function ensureDb() {
     if (missing.length) {
       throw new Error(`Estrutura MySQL incompleta. Tabelas ausentes: ${missing.join(', ')}`);
     }
+    const [versions] = await connection.query(
+      'SELECT versao FROM schema_migrations WHERE versao = ?',
+      [REQUIRED_SCHEMA_VERSION]
+    );
+    if (!versions.length) {
+      throw new Error(`Banco desatualizado. Migração necessária: ${REQUIRED_SCHEMA_VERSION}`);
+    }
+  } finally {
+    connection.release();
+  }
+}
+
+async function withTransaction(callback) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const result = await callback(connection);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
   } finally {
     connection.release();
   }
@@ -190,7 +226,7 @@ async function ensureDb() {
 async function getAll(sheetName) {
   if (sheetName === 'Riscos') {
     const [rows] = await pool.query(
-      `SELECT r.id AS ID, g.nome AS Grupo, r.descricao AS Descricao
+      `SELECT r.id AS ID, g.nome AS Grupo, r.descricao AS Descricao, r.agravos AS Agravos
          FROM riscos r
          JOIN grupos_risco g ON g.id = r.grupo_id
         ORDER BY r.id`
@@ -207,7 +243,7 @@ async function getAll(sheetName) {
 async function getById(sheetName, id) {
   if (sheetName === 'Riscos') {
     const [rows] = await pool.query(
-      `SELECT r.id AS ID, g.nome AS Grupo, r.descricao AS Descricao
+      `SELECT r.id AS ID, g.nome AS Grupo, r.descricao AS Descricao, r.agravos AS Agravos
          FROM riscos r
          JOIN grupos_risco g ON g.id = r.grupo_id
         WHERE r.id = ?`,
@@ -235,8 +271,8 @@ async function insert(sheetName, data) {
     try {
       const grupoId = await resolveGrupoId(connection, data.Grupo);
       const [result] = await connection.query(
-        'INSERT INTO riscos (grupo_id, descricao) VALUES (?, ?)',
-        [grupoId, data.Descricao]
+        'INSERT INTO riscos (grupo_id, descricao, agravos) VALUES (?, ?, ?)',
+        [grupoId, data.Descricao, data.Agravos || null]
       );
       return getById('Riscos', result.insertId);
     } finally {
@@ -270,6 +306,10 @@ async function update(sheetName, id, data) {
       if (data.Descricao !== undefined) {
         sets.push('descricao = ?');
         values.push(data.Descricao);
+      }
+      if (data.Agravos !== undefined) {
+        sets.push('agravos = ?');
+        values.push(data.Agravos || null);
       }
       if (!sets.length) return getById(sheetName, id);
       values.push(id);
@@ -364,6 +404,176 @@ async function setExamesForCargo(cargoId, exameIds) {
   }
 }
 
+async function getPerfilBySetorCargo(setorId, cargoId) {
+  if (!setorId || !cargoId) return null;
+  const [rows] = await pool.query(
+    `SELECT p.id AS ID, p.setor_id AS SetorID, p.cargo_id AS CargoID,
+            s.nome AS SetorNome, c.nome AS CargoNome, p.ativo AS Ativo,
+            p.periodicidade_vencimento_meses AS PeriodicidadeVencimentoMeses
+       FROM perfis_ocupacionais p
+       JOIN setores s ON s.id = p.setor_id
+       JOIN cargos c ON c.id = p.cargo_id
+      WHERE p.setor_id = ? AND p.cargo_id = ?`,
+    [setorId, cargoId]
+  );
+  return rows[0] || null;
+}
+
+async function syncPerfilAtividade(setorId, cargoId) {
+  if (!setorId || !cargoId) return;
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS total FROM funcionarios
+      WHERE setor_id = ? AND cargo_id = ? AND situacao <> 'DESLIGADO'`,
+    [setorId, cargoId]
+  );
+  const ativo = Number(rows[0]?.total || 0) > 0 ? 1 : 0;
+  if (ativo) {
+    await pool.query(
+      `INSERT INTO perfis_ocupacionais (setor_id, cargo_id, ativo)
+       VALUES (?, ?, 1)
+       ON DUPLICATE KEY UPDATE ativo = 1`,
+      [setorId, cargoId]
+    );
+  } else {
+    await pool.query(
+      'UPDATE perfis_ocupacionais SET ativo = 0 WHERE setor_id = ? AND cargo_id = ?',
+      [setorId, cargoId]
+    );
+  }
+}
+
+async function getPerfisResumo() {
+  const [rows] = await pool.query(
+    `SELECT COALESCE(CAST(p.id AS CHAR), CONCAT('pendente-', base.setor_id, '-', base.cargo_id)) AS ID,
+            base.setor_id AS SetorID, base.cargo_id AS CargoID,
+            s.nome AS SetorNome, c.nome AS CargoNome,
+            CASE WHEN p.id IS NULL THEN 0 ELSE 1 END AS TemPerfil,
+            COALESCE(p.periodicidade_vencimento_meses, 12) AS PeriodicidadeVencimentoMeses,
+            COUNT(DISTINCT pr.risco_id) AS totalRiscos,
+            COUNT(DISTINCT per.exame_id) AS totalExames,
+            COUNT(DISTINCT per.id) AS totalRegras
+       FROM (
+         SELECT setor_id, cargo_id FROM perfis_ocupacionais WHERE ativo = 1
+         UNION
+         SELECT DISTINCT setor_id, cargo_id FROM funcionarios WHERE situacao <> 'DESLIGADO'
+       ) base
+       JOIN setores s ON s.id = base.setor_id
+       JOIN cargos c ON c.id = base.cargo_id
+       LEFT JOIN perfis_ocupacionais p
+         ON p.setor_id = base.setor_id AND p.cargo_id = base.cargo_id AND p.ativo = 1
+       LEFT JOIN perfil_risco pr ON pr.perfil_id = p.id
+       LEFT JOIN perfil_exame_regra per ON per.perfil_id = p.id
+      GROUP BY p.id, base.setor_id, base.cargo_id, s.nome, c.nome, p.periodicidade_vencimento_meses
+      ORDER BY s.nome, c.nome`
+  );
+  return rows;
+}
+
+async function getRiscosByPerfil(setorId, cargoId) {
+  const perfil = await getPerfilBySetorCargo(setorId, cargoId);
+  if (!perfil) return [];
+  const [rows] = await pool.query(
+    'SELECT risco_id FROM perfil_risco WHERE perfil_id = ? ORDER BY id',
+    [perfil.ID]
+  );
+  return rows.map(row => String(row.risco_id));
+}
+
+async function setRiscosForPerfil(setorId, cargoId, riscoIds) {
+  return withTransaction(async connection => {
+    const [profiles] = await connection.query(
+      'SELECT id FROM perfis_ocupacionais WHERE setor_id = ? AND cargo_id = ?',
+      [setorId, cargoId]
+    );
+    let perfilId = profiles[0]?.id;
+    if (!perfilId) {
+      const [result] = await connection.query(
+        'INSERT INTO perfis_ocupacionais (setor_id, cargo_id) VALUES (?, ?)',
+        [setorId, cargoId]
+      );
+      perfilId = result.insertId;
+    }
+    await connection.query('DELETE FROM perfil_risco WHERE perfil_id = ?', [perfilId]);
+    for (const riscoId of [...new Set((riscoIds || []).map(String))]) {
+      await connection.query(
+        'INSERT INTO perfil_risco (perfil_id, risco_id) VALUES (?, ?)',
+        [perfilId, riscoId]
+      );
+    }
+    return true;
+  });
+}
+
+async function getExameRulesByPerfil(setorId, cargoId, tipoChave = null) {
+  const perfil = await getPerfilBySetorCargo(setorId, cargoId);
+  if (!perfil) return [];
+  const params = [perfil.ID];
+  let filter = '';
+  if (tipoChave) {
+    filter = ' AND te.chave = ?';
+    params.push(tipoChave);
+  }
+  const [rows] = await pool.query(
+    `SELECT per.id AS ID, per.exame_id AS ExameID, ec.nome AS ExameNome,
+            per.tipo_exame_id AS TipoExameID, te.chave AS TipoChave, te.nome AS TipoNome,
+            per.obrigatorio AS Obrigatorio, per.periodicidade_meses AS PeriodicidadeMeses,
+            per.valor_original AS ValorOriginal
+       FROM perfil_exame_regra per
+       JOIN exames_complementares ec ON ec.id = per.exame_id
+       JOIN tipos_exame te ON te.id = per.tipo_exame_id
+      WHERE per.perfil_id = ?${filter}
+      ORDER BY te.ordem, ec.ordem, ec.nome`,
+    params
+  );
+  return rows;
+}
+
+async function setExameRulesForPerfil(setorId, cargoId, regras) {
+  return withTransaction(async connection => {
+    const [profiles] = await connection.query(
+      'SELECT id FROM perfis_ocupacionais WHERE setor_id = ? AND cargo_id = ?',
+      [setorId, cargoId]
+    );
+    let perfilId = profiles[0]?.id;
+    if (!perfilId) {
+      const [result] = await connection.query(
+        'INSERT INTO perfis_ocupacionais (setor_id, cargo_id) VALUES (?, ?)',
+        [setorId, cargoId]
+      );
+      perfilId = result.insertId;
+    }
+    await connection.query('DELETE FROM perfil_exame_regra WHERE perfil_id = ?', [perfilId]);
+    for (const regra of regras) {
+      await connection.query(
+        `INSERT INTO perfil_exame_regra
+           (perfil_id, exame_id, tipo_exame_id, obrigatorio, periodicidade_meses, valor_original)
+         VALUES (?, ?, ?, 1, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           periodicidade_meses = VALUES(periodicidade_meses),
+           valor_original = VALUES(valor_original)`,
+        [
+          perfilId, regra.exameId, regra.tipoExameId,
+          regra.periodicidadeMeses || null,
+          regra.periodicidadeMeses ? `${regra.periodicidadeMeses} meses` : 'X'
+        ]
+      );
+    }
+    return true;
+  });
+}
+
+async function setVencimentoForPerfil(setorId, cargoId, periodicidadeMeses) {
+  const meses = Number(periodicidadeMeses);
+  if (!Number.isInteger(meses) || meses < 1 || meses > 120) throw new Error('Periodicidade deve estar entre 1 e 120 meses.');
+  await pool.query(
+    `INSERT INTO perfis_ocupacionais (setor_id, cargo_id, periodicidade_vencimento_meses)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE periodicidade_vencimento_meses = VALUES(periodicidade_vencimento_meses), ativo = 1`,
+    [setorId, cargoId, meses]
+  );
+  return getPerfilBySetorCargo(setorId, cargoId);
+}
+
 async function getConfig() {
   const row = await getById('ConfigGeral', 1);
   return { ...DEFAULT_CONFIG, ...(row || {}), ID: 1 };
@@ -448,6 +658,7 @@ async function close() {
 
 module.exports = {
   DB_DESCRIPTION,
+  REQUIRED_SCHEMA_VERSION,
   SCHEMAS,
   DEFAULT_CONFIG,
   ensureDb,
@@ -460,11 +671,21 @@ module.exports = {
   setRiscosForCargo,
   getExamesByCargo,
   setExamesForCargo,
+  getPerfilBySetorCargo,
+  syncPerfilAtividade,
+  getPerfisResumo,
+  getRiscosByPerfil,
+  setRiscosForPerfil,
+  getExameRulesByPerfil,
+  setExameRulesForPerfil,
+  setVencimentoForPerfil,
   getConfig,
   saveConfig,
   getTiposExame,
   getExamesComplementares,
   getGruposRisco,
   getUsage,
+  pool,
+  withTransaction,
   close
 };

@@ -27,7 +27,7 @@
         <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase text-right">Ações</th>
       </tr>
     </thead>
-    <tbody id="tbody-cargos" class="divide-y divide-border-subtle">
+    <tbody id="tbody-cargos" class="divide-y divide-border-subtle font-table-data text-table-data">
       <tr><td colspan="3" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
     </tbody>
   </table>
@@ -50,10 +50,48 @@
   </div>
 </div>
 
+<!-- Colaboradores do cargo -->
+<div id="modal-colaboradores-cargo" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
+  <div class="bg-surface rounded-xl w-full max-w-4xl p-6 max-h-[90vh] flex flex-col">
+    <div class="flex items-start justify-between gap-4 mb-4">
+      <div>
+        <h3 class="font-headline-md text-headline-md">Colaboradores do cargo</h3>
+        <p id="colaboradores-cargo-nome" class="text-on-surface-variant mt-1"></p>
+      </div>
+      <button type="button" onclick="fecharColaboradoresCargo()" class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg" title="Fechar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="mb-4 relative max-w-lg">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+      <input id="busca-colaboradores-cargo" type="text" placeholder="Buscar por setor ou nome do colaborador..." class="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary text-body-md">
+    </div>
+    <div class="border border-border-subtle rounded-xl overflow-auto flex-1">
+      <table class="w-full text-left border-collapse text-sm">
+        <thead class="bg-background-main border-b border-border-subtle sticky top-0">
+          <tr>
+            <th class="px-4 py-3 font-label-caps text-label-caps uppercase">Colaborador</th>
+            <th class="px-4 py-3 font-label-caps text-label-caps uppercase">Setor atual</th>
+            <th class="px-4 py-3 font-label-caps text-label-caps uppercase">Situação</th>
+            <th class="px-4 py-3 font-label-caps text-label-caps uppercase text-right">Ação</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-colaboradores-cargo" class="divide-y divide-border-subtle font-table-data text-table-data"></tbody>
+      </table>
+    </div>
+    <div class="flex items-center justify-between gap-4 pt-4">
+      <p id="total-colaboradores-cargo" class="text-on-surface-variant text-sm"></p>
+      <button type="button" onclick="fecharColaboradoresCargo()" class="px-5 py-2.5 rounded-lg font-semibold text-on-surface-variant hover:bg-surface-container-low">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let paginaCargos = 1;
 const ITENS_POR_PAGINA = 5;
 let buscaCargosAtual = '';
+let colaboradoresCargo = [];
+let cargoColaboradoresAtual = null;
 async function carregarCargos(busca = buscaCargosAtual) {
   buscaCargosAtual = busca;
   const tbody = document.getElementById('tbody-cargos');
@@ -71,6 +109,7 @@ async function carregarCargos(busca = buscaCargosAtual) {
         <td class="px-6 py-4 font-semibold">${c.Nome}</td>
         <td class="px-6 py-4 text-right">
           <div class="flex justify-end gap-2 opacity-60 group-hover:opacity-100">
+            <button onclick='abrirColaboradoresCargo(${JSON.stringify(c).replace(/'/g, "&#39;")})' class="p-2 text-primary hover:bg-primary-fixed rounded" title="Ver colaboradores"><span class="material-symbols-outlined">group</span></button>
             <button onclick='editar(${JSON.stringify(c).replace(/'/g, "&#39;")})' class="p-2 text-primary hover:bg-primary-fixed rounded"><span class="material-symbols-outlined">edit</span></button>
             <button onclick="excluir(${c.ID})" class="p-2 text-error hover:bg-error-container rounded"><span class="material-symbols-outlined">delete</span></button>
           </div>
@@ -104,6 +143,70 @@ function editar(cargo) {
   document.getElementById('modal').classList.add('flex');
 }
 
+async function abrirColaboradoresCargo(cargo, buscaInicial = '') {
+  cargoColaboradoresAtual = cargo;
+  const modal = document.getElementById('modal-colaboradores-cargo');
+  const tbody = document.getElementById('tbody-colaboradores-cargo');
+  document.getElementById('colaboradores-cargo-nome').textContent = cargo.Nome || '';
+  document.getElementById('busca-colaboradores-cargo').value = buscaInicial;
+  tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-on-surface-variant">Carregando...</td></tr>';
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  try {
+    const funcionarios = await api('funcionarios');
+    colaboradoresCargo = funcionarios.filter(f => String(f.CargoID) === String(cargo.ID));
+    colaboradoresCargo.sort((a, b) => String(a.SetorNome || '').localeCompare(String(b.SetorNome || ''), 'pt-BR') || String(a.Nome || '').localeCompare(String(b.Nome || ''), 'pt-BR'));
+    renderColaboradoresCargo();
+    document.getElementById('busca-colaboradores-cargo').focus();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-error">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function renderColaboradoresCargo() {
+  const busca = document.getElementById('busca-colaboradores-cargo').value.toLowerCase().trim();
+  const filtrados = colaboradoresCargo.filter(f =>
+    String(f.Nome || '').toLowerCase().includes(busca) ||
+    String(f.SetorNome || '').toLowerCase().includes(busca)
+  );
+  const tbody = document.getElementById('tbody-colaboradores-cargo');
+  tbody.innerHTML = filtrados.length ? filtrados.map(f => `
+    <tr class="hover:bg-[#EBF2FA] transition-colors">
+      <td class="px-4 py-3 font-semibold">${escapeHtml(f.Nome || '')}</td>
+      <td class="px-4 py-3">${escapeHtml(f.SetorNome || '')}</td>
+      <td class="px-4 py-3">${escapeHtml(f.Situacao || '')}</td>
+      <td class="px-4 py-3 text-right">
+        <button onclick="editarColaboradorCargo(${f.ID})" class="inline-flex items-center gap-1 px-3 py-2 text-primary font-semibold hover:bg-primary-fixed rounded-lg" title="Corrigir cargo ou setor">
+          <span class="material-symbols-outlined text-[20px]">edit</span> Corrigir
+        </button>
+      </td>
+    </tr>`).join('') : '<tr><td colspan="4" class="px-4 py-4 text-on-surface-variant">Nenhum colaborador encontrado neste cargo.</td></tr>';
+  document.getElementById('total-colaboradores-cargo').textContent = busca
+    ? `${filtrados.length} de ${colaboradoresCargo.length} colaborador(es)`
+    : `${colaboradoresCargo.length} colaborador(es)`;
+}
+
+function fecharColaboradoresCargo() {
+  const modal = document.getElementById('modal-colaboradores-cargo');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+}
+
+function editarColaboradorCargo(id) {
+  if (!cargoColaboradoresAtual) return;
+  const retorno = new URLSearchParams({
+    colaboradores: String(cargoColaboradoresAtual.ID),
+    buscaLista: document.getElementById('busca').value,
+    pagina: String(paginaCargos),
+    buscaColaboradores: document.getElementById('busca-colaboradores-cargo').value
+  });
+  const destinoRetorno = `${appUrl('cargos')}?${retorno.toString()}`;
+  const destino = new URLSearchParams({ editar: String(id), retorno: destinoRetorno });
+  window.location.href = `${appUrl('funcionarios')}?${destino.toString()}`;
+}
+
+document.getElementById('busca-colaboradores-cargo').addEventListener('input', renderColaboradoresCargo);
+
 document.getElementById('form-cargo').addEventListener('submit', async (e) => {
   e.preventDefault();
   const id = document.getElementById('cargo-id').value;
@@ -135,7 +238,20 @@ async function excluir(id) {
   }
 }
 
-carregarCargos();
+(async function iniciarCargos() {
+  const params = new URLSearchParams(window.location.search);
+  const buscaLista = params.get('buscaLista') || '';
+  paginaCargos = Math.max(1, Number(params.get('pagina')) || 1);
+  document.getElementById('busca').value = buscaLista;
+  await carregarCargos(buscaLista);
+  const cargoId = params.get('colaboradores');
+  if (cargoId) {
+    try {
+      const cargo = await api(`cargos/${encodeURIComponent(cargoId)}`);
+      await abrirColaboradoresCargo(cargo, params.get('buscaColaboradores') || '');
+    } catch (error) { toast(error.message, 'erro'); }
+  }
+})();
 </script>
 
 <%- include('partials/foot') %>

@@ -1,0 +1,199 @@
+<% const pageTitle = 'Importação de Funcionários'; %>
+<%- include('partials/head', {pageTitle}) %>
+<%- include('partials/nav', {pageTitle, active: 'funcionarios'}) %>
+
+<div class="flex justify-between items-end mb-6">
+  <div>
+    <h3 class="font-headline-lg text-headline-lg text-on-surface">Importar funcionários</h3>
+    <p class="text-on-surface-variant text-body-md mt-1">A planilha é analisada em uma área temporária. CPFs existentes serão atualizados, sem criar duplicidades.</p>
+  </div>
+  <a href="<%= baseUrl('funcionarios') %>" class="px-5 py-2.5 rounded-lg font-semibold text-primary bg-secondary-container">Voltar ao cadastro</a>
+</div>
+
+<section class="bg-surface border border-border-subtle rounded-xl p-5 mb-5">
+  <div class="flex flex-wrap items-end gap-4">
+    <div class="flex-1 min-w-72">
+      <label class="block font-semibold mb-1">Arquivo XLSX</label>
+      <input id="arquivo" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="w-full border border-border-subtle rounded-lg px-3 py-2 bg-white">
+      <p class="text-xs text-on-surface-variant mt-1">A aba esperada é “Periodicos”, com os títulos na linha 2.</p>
+    </div>
+    <button id="btn-analisar" type="button" onclick="analisar()" class="px-5 py-2.5 rounded-lg font-bold bg-primary text-white flex items-center gap-2">
+      <span class="material-symbols-outlined">manage_search</span> Analisar planilha
+    </button>
+    <div class="min-w-72">
+      <label class="block font-semibold mb-1">Importações anteriores</label>
+      <select id="lotes" onchange="selecionarLote(this.value)" class="w-full border border-border-subtle rounded-lg px-3 py-2.5 bg-white"><option value="">Nenhuma</option></select>
+    </div>
+  </div>
+</section>
+
+<div id="conteudo-lote" class="hidden">
+  <div id="cards" class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5"></div>
+
+  <section class="bg-surface border border-border-subtle rounded-xl p-5 mb-5">
+    <div class="flex justify-between items-center mb-3">
+      <div>
+        <h4 class="font-bold text-lg">Mapeamento das empresas</h4>
+        <p class="text-sm text-on-surface-variant">A coluna “CNPJ” da planilha contém códigos. Associe cada código à empresa correta.</p>
+      </div>
+    </div>
+    <div id="mapeamentos" class="grid md:grid-cols-2 gap-3"></div>
+  </section>
+
+  <section class="bg-surface border border-border-subtle rounded-xl p-5 mb-5">
+    <h4 class="font-bold text-lg">Campos atualizados em CPFs já cadastrados</h4>
+    <p class="text-sm text-on-surface-variant mt-1 mb-4">A seleção abaixo afeta somente colaboradores existentes. Novos colaboradores recebem todos os dados. Cargo, setor e empresa ficam protegidos por padrão.</p>
+    <div id="campos-atualizacao" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <label class="flex items-center gap-2"><input type="checkbox" value="nome"> Nome</label>
+      <label class="flex items-center gap-2"><input type="checkbox" value="data_nascimento" checked> Data de nascimento</label>
+      <label class="flex items-center gap-2"><input type="checkbox" value="data_admissao" checked> Data de admissão</label>
+      <label class="flex items-center gap-2"><input type="checkbox" value="ultimo_exame" checked> Último exame e vencimento</label>
+      <label class="flex items-center gap-2"><input type="checkbox" value="empresa"> Empresa</label>
+      <label class="flex items-center gap-2"><input type="checkbox" value="setor"> Setor</label>
+      <label class="flex items-center gap-2"><input type="checkbox" value="cargo"> Cargo</label>
+      <label class="flex items-center gap-2"><input type="checkbox" value="condicao"> Condição</label>
+      <label class="flex items-center gap-2"><input type="checkbox" value="situacao"> Situação</label>
+    </div>
+  </section>
+
+  <section class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+    <div class="px-5 py-4 flex flex-wrap justify-between items-center gap-3 border-b border-border-subtle">
+      <div>
+        <h4 class="font-bold text-lg">Linhas analisadas</h4>
+        <p class="text-sm text-on-surface-variant">Linhas pendentes não são importadas. Use “Ignorar” apenas quando a linha não deve entrar no sistema.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <select id="filtro-estado" onchange="pagina=1; renderTabela()" class="border border-border-subtle rounded-lg px-3 py-2 bg-white">
+          <option value="">Todos os estados</option><option value="PENDENTE">Pendentes</option><option value="PRONTO">Prontos</option><option value="IGNORADO">Ignorados</option><option value="IMPORTADO">Importados</option>
+        </select>
+        <button id="btn-efetivar" type="button" onclick="efetivar()" class="px-5 py-2.5 rounded-lg font-bold bg-primary text-white">Efetivar linhas prontas</button>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-background-main border-b border-border-subtle"><tr>
+          <th class="px-4 py-3">Linha</th><th class="px-4 py-3">Nome</th><th class="px-4 py-3">CPF</th>
+          <th class="px-4 py-3">Empresa</th><th class="px-4 py-3">Departamento</th><th class="px-4 py-3">Cargo</th>
+          <th class="px-4 py-3">Status</th><th class="px-4 py-3">Situação</th><th class="px-4 py-3">Conflitos</th><th class="px-4 py-3 text-right">Ação</th>
+        </tr></thead>
+        <tbody id="itens" class="font-table-data text-table-data"><tr><td colspan="10" class="px-4 py-4">Selecione uma importação.</td></tr></tbody>
+      </table>
+    </div>
+    <div id="paginacao"></div>
+  </section>
+</div>
+
+<script>
+let loteAtual = null;
+let empresas = [];
+let pagina = 1;
+const POR_PAGINA = 25;
+
+function badge(estado) {
+  const classes = { PRONTO: 'bg-green-100 text-green-800', PENDENTE: 'bg-red-100 text-red-800', IGNORADO: 'bg-gray-200 text-gray-700', IMPORTADO: 'bg-blue-100 text-blue-800' };
+  return `<span class="px-2 py-1 rounded-full text-xs font-bold ${classes[estado] || 'bg-gray-100'}">${escapeHtml(estado)}</span>`;
+}
+
+async function carregarLotes(selecionar = '') {
+  const lotes = await api('importacoes/funcionarios');
+  const select = document.getElementById('lotes');
+  select.innerHTML = '<option value="">Selecione...</option>' + lotes.map(l => `<option value="${l.id}">#${l.id} — ${escapeHtml(l.nome_arquivo)} (${l.status})</option>`).join('');
+  if (selecionar) { select.value = String(selecionar); await selecionarLote(selecionar); }
+}
+
+async function analisar() {
+  const input = document.getElementById('arquivo');
+  const file = input.files[0];
+  if (!file) return toast('Selecione um arquivo XLSX.', 'erro');
+  const button = document.getElementById('btn-analisar');
+  button.disabled = true; button.classList.add('opacity-50');
+  try {
+    const response = await fetch(apiUrl('importacoes/funcionarios'), {
+      method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name) },
+      body: await file.arrayBuffer(), cache: 'no-store'
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.erro || 'Falha ao analisar a planilha.');
+    toast('Planilha analisada. Confira os conflitos antes de importar.');
+    await carregarLotes(data.lote.id);
+  } catch (error) { toast(error.message, 'erro'); }
+  finally { button.disabled = false; button.classList.remove('opacity-50'); }
+}
+
+async function selecionarLote(id) {
+  if (!id) { document.getElementById('conteudo-lote').classList.add('hidden'); return; }
+  [loteAtual, empresas] = await Promise.all([api(`importacoes/funcionarios/${id}`), api('empresas')]);
+  pagina = 1;
+  document.getElementById('conteudo-lote').classList.remove('hidden');
+  renderTudo();
+}
+
+function renderTudo() {
+  const l = loteAtual.lote;
+  document.getElementById('cards').innerHTML = [
+    ['Total', l.total_linhas, 'bg-surface'], ['Prontos', l.linhas_prontas, 'bg-green-50'],
+    ['Pendentes', l.linhas_pendentes, 'bg-red-50'], ['Importados', l.linhas_importadas, 'bg-blue-50'], ['Estado', l.status, 'bg-surface']
+  ].map(([label, value, bg]) => `<div class="${bg} border border-border-subtle rounded-xl p-4"><p class="text-xs uppercase text-on-surface-variant font-bold">${label}</p><p class="text-xl font-bold mt-1">${escapeHtml(value)}</p></div>`).join('');
+  document.getElementById('mapeamentos').innerHTML = loteAtual.mapeamentos.map(m => `
+    <div class="border border-border-subtle rounded-lg p-3 flex items-center gap-3">
+      <strong class="min-w-28">${escapeHtml(m.codigo_origem)}</strong>
+      <select onchange="mapearEmpresa('${escapeHtml(m.codigo_origem)}', this.value)" class="flex-1 border border-border-subtle rounded-lg px-3 py-2 bg-white">
+        <option value="">Selecione a empresa...</option>${empresas.map(e => `<option value="${e.ID}" ${String(e.ID) === String(m.empresa_id || '') ? 'selected' : ''}>${escapeHtml(e.RazaoSocial)}</option>`).join('')}
+      </select>
+    </div>`).join('') || '<p class="text-on-surface-variant">Nenhum código de empresa encontrado.</p>';
+  renderTabela();
+}
+
+function renderTabela() {
+  const estado = document.getElementById('filtro-estado').value;
+  const filtrados = loteAtual.itens.filter(i => !estado || i.estado === estado);
+  const inicio = (pagina - 1) * POR_PAGINA;
+  const itens = filtrados.slice(inicio, inicio + POR_PAGINA);
+  document.getElementById('itens').innerHTML = itens.map(i => `
+    <tr class="border-b border-border-subtle align-top">
+      <td class="px-4 py-3">${i.linha_origem}</td><td class="px-4 py-3 font-semibold">${escapeHtml(i.nome)}</td>
+      <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(formatCpf(i.cpf_normalizado || i.cpf || ''))}</td><td class="px-4 py-3">${escapeHtml(i.empresa_codigo || '')}</td>
+      <td class="px-4 py-3">${escapeHtml(i.departamento || '')}</td><td class="px-4 py-3">${escapeHtml(i.cargo || '')}</td>
+      <td class="px-4 py-3">${escapeHtml(i.status_origem || '')}</td><td class="px-4 py-3">${escapeHtml(i.situacao_origem || '')}</td>
+      <td class="px-4 py-3 min-w-72">${badge(i.estado)} ${i.acao==='ATUALIZAR'?'<span class="ml-1 px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">ATUALIZAR CADASTRO</span>':''} ${(i.conflitos || []).map(c => `<div class="text-xs mt-1 text-on-surface-variant">${escapeHtml(c)}</div>`).join('')}</td>
+      <td class="px-4 py-3 text-right">${['IMPORTADO'].includes(i.estado) ? '' : `<button onclick="acaoItem(${i.id}, '${i.acao === 'IGNORAR' ? 'IMPORTAR' : 'IGNORAR'}')" class="text-sm font-bold ${i.acao === 'IGNORAR' ? 'text-primary' : 'text-error'}">${i.acao === 'IGNORAR' ? 'Restaurar' : 'Ignorar'}</button>`}</td>
+    </tr>`).join('') || '<tr><td colspan="10" class="px-4 py-4 text-on-surface-variant">Nenhuma linha neste filtro.</td></tr>';
+  document.getElementById('paginacao').innerHTML = htmlPaginacao(pagina, filtrados.length, POR_PAGINA, 'irPagina');
+  document.getElementById('btn-efetivar').disabled = Number(loteAtual.lote.linhas_prontas) === 0;
+  document.getElementById('btn-efetivar').classList.toggle('opacity-50', Number(loteAtual.lote.linhas_prontas) === 0);
+}
+
+function irPagina(value) { pagina = value; renderTabela(); }
+
+async function mapearEmpresa(codigo, empresaId) {
+  if (!empresaId) return;
+  loteAtual = await api(`importacoes/funcionarios/${loteAtual.lote.id}/empresas`, { method: 'PUT', body: JSON.stringify({ codigo, empresaId }) });
+  renderTudo();
+}
+
+async function acaoItem(itemId, acao) {
+  loteAtual = await api(`importacoes/funcionarios/${loteAtual.lote.id}/itens/${itemId}`, { method: 'PUT', body: JSON.stringify({ acao }) });
+  renderTudo();
+}
+
+async function efetivar() {
+  const count = Number(loteAtual.lote.linhas_prontas);
+  const camposAtualizacao = [...document.querySelectorAll('#campos-atualizacao input:checked')].map(input => input.value);
+  const nomesCampos = [...document.querySelectorAll('#campos-atualizacao input:checked')].map(input => input.parentElement.textContent.trim());
+  const resumo = nomesCampos.length ? nomesCampos.join(', ') : 'nenhum campo dos cadastros existentes';
+  if (!count || !confirm(`Processar ${count} linha(s) pronta(s)?\n\nEm CPFs existentes será atualizado: ${resumo}.\nNovos colaboradores receberão todos os dados.`)) return;
+  try {
+    const result = await api(`importacoes/funcionarios/${loteAtual.lote.id}/efetivar`, { method: 'POST', body: JSON.stringify({ camposAtualizacao }) });
+    loteAtual = result.dados;
+    toast(`${result.cadastrados} cadastrado(s) e ${result.atualizados} atualizado(s).`);
+    renderTudo();
+    await carregarLotes(loteAtual.lote.id);
+  } catch (error) { toast(error.message, 'erro'); }
+}
+
+(async function init() {
+  try { await carregarLotes(); } catch (error) { toast(error.message, 'erro'); }
+})();
+</script>
+
+<%- include('partials/foot') %>

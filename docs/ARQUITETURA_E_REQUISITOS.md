@@ -25,7 +25,7 @@ O banco operacional é `medicina_db`, acessado pelo hostname `mysql` dentro da r
 | `Setores` | Setores da empresa. |
 | `Cargos` | Cargos ou funções. |
 | `Empresas` | Razão social, CNPJ, endereço e contatos das empresas atendidas. |
-| `Funcionarios` | Nome, CPF, nascimento, empresa, setor e cargo do colaborador. |
+| `Funcionarios` | Nome, CPF, nascimento, admissão, último exame, vencimento, observação/condição, empresa, setor, cargo e situação. Status e atraso são derivados dinamicamente do vencimento. |
 | `GruposRisco` | Nome, cor e ordem de exibição dos grupos de risco. |
 | `Riscos` | Descrição do risco e seu grupo. |
 | `Cargo_Risco` | Relação de muitos para muitos entre cargo e risco. |
@@ -34,6 +34,9 @@ O banco operacional é `medicina_db`, acessado pelo hostname `mysql` dentro da r
 | `TiposExame` | Tipos de ASO, como admissional e periódico. |
 | `ConfigGeral` | Dados do médico responsável e preferências gerais. |
 | `HistoricoPDF` | Emissões, dados de geração e snapshot do documento. |
+| `ImportacoesFuncionarios` | Lotes temporários recebidos por XLSX. |
+| `ImportacaoFuncionariosItens` | Linhas originais, valores normalizados, conflitos e ação escolhida. |
+| `ImportacaoEmpresaMapeamentos` | Associação explícita entre o código da planilha e uma empresa cadastrada. |
 
 ### Relacionamentos principais
 
@@ -75,26 +78,45 @@ Riscos e exames complementares são definidos pelo cargo. O setor continua sendo
 - As telas seguem o mesmo padrão: listagem, pesquisa, inclusão, edição, exclusão e confirmação de ações.
 - Setores e cargos permitem busca por nome; funcionários permitem busca por nome ou CPF.
 - A tela de Riscos possui as abas **Riscos** e **Grupos de risco**. Nesta segunda aba são administrados nome, cor e ordem dos grupos; a listagem de riscos exibe a cor configurada para cada grupo.
-- Exames complementares possuem cadastro próprio e são vinculados posteriormente na tela de Relacionamentos.
-- A tela **Exames** possui as abas **Tipos de Exames** e **Exames Complementares**, cada uma com título próprio. A primeira administra opções como admissional, periódico e demissional; a segunda administra os exames vinculados aos cargos.
+- Exames complementares possuem cadastro próprio e são vinculados posteriormente aos perfis ocupacionais.
+- A tela **Exames** possui as abas **Tipos de Exames** e **Exames Complementares**. Os tipos distinguem as cinco modalidades selecionáveis de ASO e o acompanhamento após admissão; os exames complementares são associados por perfil, tipo e periodicidade.
 - As listagens usam paginação de **cinco itens por página**, evitando barras de rolagem internas extensas.
 
 ### Relacionamentos
 
-- Organizada em duas abas: **Cargo × Riscos** e **Cargo × Exames Complementares**.
-- Mostra cards de resumo, busca de cargo ao lado do título e lista de cargos paginada.
-- Cada aba permite selecionar um cargo e marcar/desmarcar os vínculos correspondentes.
-- A seleção é compartilhada entre as abas e preservada durante a paginação. Ao trocar de aba, são exibidos os vínculos do mesmo cargo ativo.
-- O total de cargos é fixo; os contadores de riscos e exames passam a mostrar os dados do cargo ativo quando houver seleção. Sem seleção, o status informa quantos cargos não possuem vínculos; com seleção, informa se aquele cargo está **Pendente** ou **Em dia**.
+- Organizada em duas abas: **Perfil × Riscos** e **Perfil × Exames**.
+- O perfil ocupacional é a combinação única de setor e cargo; um mesmo cargo pode ter riscos e exames diferentes conforme o setor.
+- Mostra cards de resumo, busca por setor ou cargo e lista paginada de perfis.
+- Perfis importados do PCMSO exibem riscos e regras de exames por tipo e periodicidade. As regras podem ser adicionadas, removidas, canceladas ou salvas pela interface. Combinações usadas por colaboradores mas ausentes no documento aparecem explicitamente como pendentes.
+- Emissões de ASO não demissionais atualizam o controle ocupacional do colaborador usando a data da avaliação clínica ou, quando ausente, a data de emissão. O próximo vencimento é projetado em 12 meses. Cada emissão guarda o controle anterior, permitindo restaurá-lo quando a emissão mais recente é excluída.
+- O backup lógico completo usa o formato comprimido `.medbackup`, com checksum SHA-256, todas as tabelas funcionais e arquivos institucionais permitidos. A restauração exige compatibilidade exata do esquema, validação prévia e confirmação explícita; a troca dos dados ocorre em transação com as relações restauradas pelos IDs originais.
+- `config_geral.backup_intervalo_dias`, `backup_retencao_dias` e `ultimo_backup_automatico_em` controlam o agendamento. Cada execução cria uma pasta contendo o `.medbackup` e o schema SQL; não existe mais alerta global.
 - Os grupos de riscos e suas cores são carregados da tela de Riscos, sem depender de grupos fixos na interface.
 
 ### Gerar PDF / ASO
 
 1. Selecionar o funcionário.
 2. Carregar seus dados atuais de setor e cargo.
-3. Exibir os riscos e exames associados ao cargo.
+3. Exibir os riscos e exames associados à combinação de setor, cargo e tipo de exame.
 4. Informar tipo de exame, conclusão e demais campos do documento.
 5. Gerar, registrar e baixar o PDF.
+
+A primeira emissão só é inserida no histórico depois que o PDF e o snapshot
+completo forem gerados com sucesso. Grupos de risco personalizados também são
+incluídos no documento e na pré-visualização.
+
+### Importação de funcionários
+
+1. O XLSX é lido sem modificar o arquivo original.
+2. Cada linha é gravada em um lote temporário.
+3. O sistema valida CPF, duplicidade, nascimento, departamento, cargo e empresa.
+4. Os códigos da coluna de empresa devem ser mapeados explicitamente.
+5. Linhas conflitantes permanecem pendentes ou podem ser ignoradas.
+6. Somente linhas prontas são efetivadas; setores e cargos inexistentes são criados nesse momento.
+
+O status e a situação da planilha são preservados no funcionário. As colunas de
+último exame, vencimento e atraso permanecem no item temporário para uma futura
+etapa de controle de periódicos e não são descartadas durante a conferência.
 
 ### Histórico de ASOs
 
@@ -113,8 +135,8 @@ Os grupos de risco são administrados na tela de Riscos. As ações de exclusão
 
 ## Operação e limites atuais
 
-- O sistema é local e não possui autenticação ou sincronização entre usuários.
-- O MySQL deve possuir rotina externa de backup e restauração testada.
-- Alterações estruturais são versionadas em `database/mysql-schema.sql` e `schema_migrations`.
+- Por decisão do projeto, o sistema não possui autenticação própria. O acesso deve ser limitado pela rede, firewall e proxy reverso do hospital.
+- A pasta automática deve ser protegida e copiada periodicamente para outro dispositivo ou servidor; a restauração do `.medbackup` deve ser testada.
+- Alterações estruturais são versionadas em `database/mysql-schema.sql`, `database/migrations/` e `schema_migrations`. Migrações exigem usuário administrativo; a aplicação opera com privilégios de dados restritos.
 - A senha do banco é fornecida por variável de ambiente e não deve ser versionada.
 - A manutenção de dados deve respeitar os bloqueios de relacionamento para preservar a integridade dos ASOs históricos.

@@ -1,32 +1,29 @@
-<% const pageTitle = 'Dashboard'; %>
+<% const pageTitle = 'Visão geral'; %>
 <%- include('partials/head', {pageTitle}) %>
 <%- include('partials/nav', {pageTitle, active: 'dashboard'}) %>
 
-<div class="grid grid-cols-1 md:grid-cols-4 gap-stack-md mb-stack-lg">
-  <div class="bg-surface border border-border-subtle rounded-xl p-6 card-animate card-enter">
-    <span class="material-symbols-outlined text-primary">domain</span><p class="text-on-surface-variant text-body-md mt-3">Setores cadastrados</p>
-    <p id="stat-setores" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
-  </div>
-  <div class="bg-surface border border-border-subtle rounded-xl p-6 card-animate card-enter">
-    <span class="material-symbols-outlined text-primary">work</span><p class="text-on-surface-variant text-body-md mt-3">Cargos cadastrados</p>
-    <p id="stat-cargos" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
-  </div>
-  <div class="bg-surface border border-border-subtle rounded-xl p-6 card-animate card-enter">
-    <span class="material-symbols-outlined text-primary">warning</span><p class="text-on-surface-variant text-body-md mt-3">Riscos cadastrados</p>
-    <p id="stat-riscos" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
-  </div>
-  <div class="bg-surface border border-border-subtle rounded-xl p-6 card-animate card-enter">
-    <span class="material-symbols-outlined text-primary">picture_as_pdf</span><p class="text-on-surface-variant text-body-md mt-3">ASOs gerados este mês</p>
-    <p id="stat-mes" class="text-headline-lg font-headline-lg text-primary mt-2">-</p>
-  </div>
+<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+  <div><h3 class="modern-title text-on-surface">Bom dia, Medicina Ocupacional</h3><p class="modern-subtitle mt-1">Acompanhe a situação ocupacional das empresas em um só lugar.</p></div>
+  <a href="<%= baseUrl('gerar-pdf') %>" class="modern-primary px-4 py-2.5 flex items-center gap-2"><span data-ui-icon="filePlus"></span>Gerar novo ASO</a>
 </div>
-
-<div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+  <div class="modern-surface modern-metric card-animate"><div class="flex justify-between"><span class="modern-subtitle">Funcionários</span><span class="modern-metric-icon"><span data-ui-icon="users"></span></span></div><p id="stat-funcionarios" class="text-[28px] leading-8 font-medium mt-2">-</p><small id="stat-funcionarios-contexto" class="modern-subtitle">Carregando...</small></div>
+  <div class="modern-surface modern-metric card-animate"><div class="flex justify-between"><span class="modern-subtitle">Setores</span><span class="modern-metric-icon"><span data-ui-icon="building"></span></span></div><p id="stat-setores" class="text-[28px] leading-8 font-medium mt-2">-</p><small class="modern-subtitle">estruturas cadastradas</small></div>
+  <div class="modern-surface modern-metric card-animate"><div class="flex justify-between"><span class="modern-subtitle">Cargos</span><span class="modern-metric-icon"><span data-ui-icon="briefcase"></span></span></div><p id="stat-cargos" class="text-[28px] leading-8 font-medium mt-2">-</p><small class="modern-subtitle">perfis ocupacionais</small></div>
+  <div class="modern-surface modern-metric card-animate"><div class="flex justify-between"><span class="modern-subtitle">Riscos</span><span class="modern-metric-icon"><span data-ui-icon="alert"></span></span></div><p id="stat-riscos" class="text-[28px] leading-8 font-medium mt-2">-</p><small class="modern-subtitle">itens cadastrados</small></div>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-[1.5fr_.8fr] gap-4 mb-4">
+  <section class="modern-surface p-5"><div class="flex justify-between items-center mb-5"><h3 class="font-semibold">Saúde ocupacional</h3><a href="<%= baseUrl('funcionarios') %>" class="text-primary text-sm font-semibold">Ver funcionários →</a></div>
+    <div class="space-y-4 text-sm"><div class="grid grid-cols-[90px_1fr_44px] items-center gap-3"><span>No prazo</span><div class="h-2.5 bg-surface-container-low rounded-full overflow-hidden"><div id="barra-prazo" class="h-full bg-blue-500 rounded-full"></div></div><b id="stat-prazo">-</b></div><div class="grid grid-cols-[90px_1fr_44px] items-center gap-3"><span>Atrasados</span><div class="h-2.5 bg-surface-container-low rounded-full overflow-hidden"><div id="barra-atrasados" class="h-full bg-amber-500 rounded-full"></div></div><b id="stat-atrasados">-</b></div><div class="grid grid-cols-[90px_1fr_44px] items-center gap-3"><span>Afastados</span><div class="h-2.5 bg-surface-container-low rounded-full overflow-hidden"><div id="barra-afastados" class="h-full bg-violet-500 rounded-full"></div></div><b id="stat-afastados">-</b></div></div>
+  </section>
+  <section class="modern-surface p-5"><div class="flex justify-between mb-4"><h3 class="font-medium">Atenção necessária</h3><span class="modern-subtitle">Hoje</span></div><div class="space-y-2"><a href="<%= baseUrl('funcionarios') %>?status=ATRASADO" class="flex items-center gap-3 py-2 border-b border-border-subtle"><span class="modern-metric-icon"><span data-ui-icon="calendar"></span></span><span class="flex-1"><b id="atencao-atrasados" class="block text-sm font-medium">- exames vencidos</b><small class="modern-subtitle">Requerem acompanhamento</small></span><span data-ui-icon="chevronRight"></span></a><div class="flex items-center gap-3 py-2"><span class="modern-metric-icon"><span data-ui-icon="fileText"></span></span><span class="flex-1"><b id="stat-mes" class="block text-sm font-medium">- ASOs este mês</b><small class="modern-subtitle">Emissões realizadas</small></span></div></div></section>
+</div>
+<div class="modern-surface overflow-hidden">
   <div class="px-6 py-4 border-b border-border-subtle flex justify-between items-center">
     <h3 class="font-headline-md text-headline-md">Últimos ASOs gerados</h3>
     <a href="<%= baseUrl('historico') %>" class="text-primary font-body-md text-body-md font-semibold">Ver histórico completo →</a>
   </div>
-  <table class="w-full text-left border-collapse">
+  <table class="modern-table w-full text-left border-collapse">
     <thead class="bg-background-main border-b border-border-subtle">
       <tr>
         <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase">Nome</th>
@@ -35,7 +32,7 @@
         <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase">Data</th>
       </tr>
     </thead>
-    <tbody id="tbody-ultimos" class="divide-y divide-border-subtle">
+    <tbody id="tbody-ultimos" class="divide-y divide-border-subtle font-table-data text-table-data">
       <tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
     </tbody>
   </table>
@@ -48,7 +45,17 @@ async function carregarDashboard() {
     document.getElementById('stat-setores').textContent = stats.totalSetores;
     document.getElementById('stat-cargos').textContent = stats.totalCargos;
     document.getElementById('stat-riscos').textContent = stats.totalRiscos;
-    document.getElementById('stat-mes').textContent = stats.geradosNoMes;
+    document.getElementById('stat-funcionarios').textContent = stats.totalFuncionarios;
+    document.getElementById('stat-mes').textContent = `${stats.geradosNoMes} ASOs este mês`;
+    document.getElementById('stat-funcionarios-contexto').textContent = `${stats.funcionariosAtivos} ativos · ${stats.funcionariosAfastados} afastados`;
+    document.getElementById('stat-prazo').textContent = stats.examesNoPrazo;
+    document.getElementById('stat-atrasados').textContent = stats.examesAtrasados;
+    document.getElementById('stat-afastados').textContent = stats.funcionariosAfastados;
+    document.getElementById('atencao-atrasados').textContent = `${stats.examesAtrasados} exames vencidos`;
+    const total = Math.max(1, stats.totalFuncionarios);
+    document.getElementById('barra-prazo').style.width = `${stats.examesNoPrazo / total * 100}%`;
+    document.getElementById('barra-atrasados').style.width = `${stats.examesAtrasados / total * 100}%`;
+    document.getElementById('barra-afastados').style.width = `${stats.funcionariosAfastados / total * 100}%`;
 
     const tbody = document.getElementById('tbody-ultimos');
     if (!stats.ultimosGerados.length) {

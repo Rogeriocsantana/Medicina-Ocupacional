@@ -1,5 +1,11 @@
 node_modules/
 dados/
 dist/
+local-backups/
+backup-storage/
+release/
+tmp/
+*.medbackup
+*.sql.gz
 npm-debug.log
 .env

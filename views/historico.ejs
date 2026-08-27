@@ -30,7 +30,7 @@
         <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase text-right min-w-[320px]">Ações</th>
       </tr>
     </thead>
-    <tbody id="tbody-historico" class="divide-y divide-border-subtle">
+    <tbody id="tbody-historico" class="divide-y divide-border-subtle font-table-data text-table-data">
       <tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
     </tbody>
   </table>
@@ -71,7 +71,8 @@ async function carregarHistorico(busca = buscaHistoricoAtual) {
         <td class="px-4 py-4 whitespace-nowrap">
           <div class="flex flex-nowrap items-center justify-end gap-0.5">
             ${btnAcao({ onclick: `baixar(${r.ID})`, title: 'Baixar', icon: 'download' })}
-            ${btnAcao({ href: `/gerar-pdf?id=${r.ID}`, title: 'Editar', icon: 'edit' })}
+            ${btnAcao({ onclick: `baixarFicha(${r.ID})`, title: 'Baixar ficha clínica', icon: 'clinical_notes' })}
+            ${btnAcao({ href: appUrl(`gerar-pdf?id=${r.ID}`), title: 'Editar', icon: 'edit' })}
             ${btnAcao({ onclick: `regerar(${r.ID})`, title: 'Atualizar', icon: 'refresh' })}
             ${btnAcao({ onclick: `excluirRegistro(${r.ID})`, title: 'Excluir', icon: 'delete', cor: 'error' })}
           </div>
@@ -102,11 +103,24 @@ async function baixar(id) {
   }
 }
 
+async function baixarFicha(id) {
+  try {
+    const res = await fetch(apiUrl(`historico/${id}/ficha-clinica`), { cache: 'no-store' });
+    await downloadPdfFromResponse(res, `Ficha_clinica_${id}.pdf`);
+    toast('Ficha clínica baixada.');
+  } catch (err) { toast(err.message, 'erro'); }
+}
+
 async function regerar(id) {
   try {
     const res = await fetch(apiUrl(`historico/${id}/regerar`), { method: 'POST', cache: 'no-store' });
     await downloadPdfFromResponse(res, `ASO_${id}.pdf`);
-    toast('Nova versão emitida com os dados atuais.');
+    const novoId = res.headers.get('X-Historico-ID');
+    if (novoId) {
+      const ficha = await fetch(apiUrl(`historico/${novoId}/ficha-clinica`), { cache: 'no-store' });
+      await downloadPdfFromResponse(ficha, `Ficha_clinica_${novoId}.pdf`);
+    }
+    toast('Nova versão do ASO e ficha clínica emitidas.');
     carregarHistorico(document.getElementById('busca').value);
   } catch (err) {
     toast(err.message, 'erro');
@@ -116,8 +130,10 @@ async function regerar(id) {
 async function excluirRegistro(id) {
   if (!confirmarExclusao('Excluir este ASO do histórico?')) return;
   try {
-    await api(`historico/${id}`, { method: 'DELETE' });
-    toast('Registro excluído.');
+    const resultado = await api(`historico/${id}`, { method: 'DELETE' });
+    toast(resultado.controleRestaurado
+      ? 'Registro excluído e datas anteriores restauradas no cadastro.'
+      : 'Registro excluído.');
     carregarHistorico(document.getElementById('busca').value);
   } catch (err) {
     toast(err.message, 'erro');

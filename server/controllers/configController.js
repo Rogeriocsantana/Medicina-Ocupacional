@@ -1,7 +1,7 @@
 const db = require('../services/mysqlService');
 const { makeCrudController } = require('./crudFactory');
 
-const tiposCtrl = makeCrudController('TiposExame', ['Chave', 'Nome', 'Ordem']);
+const tiposCtrl = makeCrudController('TiposExame', ['Chave', 'Nome', 'Ordem', 'SelecionavelASO']);
 const examesCtrl = makeCrudController('ExamesComplementares', ['Nome', 'Ordem']);
 const gruposCtrl = makeCrudController('GruposRisco', ['Nome', 'Cor', 'Ordem']);
 const empresasCtrl = makeCrudController(

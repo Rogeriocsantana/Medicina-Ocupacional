@@ -1,0 +1,93 @@
+<% const pageTitle = 'Anamnese'; %>
+<%- include('partials/head', {pageTitle}) %>
+<%- include('partials/nav', {pageTitle, active: 'perguntas-anamnese'}) %>
+
+<div class="mb-stack-lg flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h3 class="font-headline-lg text-headline-lg text-on-surface">Perguntas admissionais</h3>
+    <p class="text-on-surface-variant font-body-md text-body-md mt-1">Defina as perguntas, o campo complementar e a ordem exibida na ficha de anamnese admissional.</p>
+  </div>
+  <button onclick="abrirModal()" class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:opacity-90">
+    <span class="material-symbols-outlined">add</span>Adicionar pergunta
+  </button>
+</div>
+
+<div id="paginacao-perguntas"></div>
+<section class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+  <table class="w-full text-left">
+    <thead class="bg-background-main border-b border-border-subtle"><tr>
+      <th class="px-6 py-4 text-label-caps uppercase">Ordem</th>
+      <th class="px-6 py-4 text-label-caps uppercase">Pergunta</th>
+      <th class="px-6 py-4 text-label-caps uppercase">Complemento quando “Sim”</th>
+      <th class="px-6 py-4 text-label-caps uppercase text-right">Ações</th>
+    </tr></thead>
+    <tbody id="tbody-perguntas" class="font-table-data text-table-data"><tr><td colspan="4" class="px-6 py-4">Carregando...</td></tr></tbody>
+  </table>
+</section>
+
+<div id="modal-pergunta" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop p-4">
+  <div class="bg-surface rounded-xl w-full max-w-xl p-6 border border-border-subtle shadow-xl">
+    <h3 id="modal-titulo" class="font-headline-md text-headline-md mb-4">Adicionar pergunta</h3>
+    <form id="form-pergunta" class="space-y-4">
+      <input type="hidden" id="pergunta-id">
+      <div><label class="block font-semibold mb-1">Pergunta</label><input id="pergunta-texto" maxlength="255" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg"></div>
+      <div><label class="block font-semibold mb-1">Complemento quando a resposta for “Sim”</label><input id="pergunta-complemento" maxlength="120" placeholder="Ex.: Qual? ou Frequência?" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg"></div>
+      <div><label class="block font-semibold mb-1">Ordem</label><input id="pergunta-ordem" type="number" min="1" max="999" required class="w-32 px-4 py-2.5 border border-border-subtle rounded-lg"></div>
+      <div class="flex justify-end gap-3"><button type="button" onclick="fecharModal()" class="px-5 py-2.5 font-semibold">Cancelar</button><button class="px-5 py-2.5 bg-primary text-white rounded-lg font-bold">Salvar</button></div>
+    </form>
+  </div>
+</div>
+
+<script>
+let perguntas = [];
+let paginaPerguntas = 1;
+const POR_PAGINA_PERGUNTAS = 10;
+
+async function carregarPerguntas() {
+  perguntas = await api('perguntas-anamnese');
+  const inicio = (paginaPerguntas - 1) * POR_PAGINA_PERGUNTAS;
+  const itens = perguntas.slice(inicio, inicio + POR_PAGINA_PERGUNTAS);
+  document.getElementById('tbody-perguntas').innerHTML = itens.map(item => `
+    <tr class="border-b border-border-subtle hover:bg-surface-container-low">
+      <td class="px-6 py-4">${item.Ordem}</td>
+      <td class="px-6 py-4 font-semibold">${escapeHtml(item.Pergunta)}</td>
+      <td class="px-6 py-4 text-on-surface-variant">${escapeHtml(item.Complemento || '—')}</td>
+      <td class="px-6 py-4 text-right">
+        <button onclick='abrirModal(${JSON.stringify(item).replace(/'/g, "&#39;")})' class="p-2 text-primary rounded hover:bg-primary-fixed" title="Editar"><span class="material-symbols-outlined">edit</span></button>
+        <button onclick="excluirPergunta(${item.ID})" class="p-2 text-error rounded hover:bg-error-container" title="Excluir"><span class="material-symbols-outlined">delete</span></button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Nenhuma pergunta cadastrada.</td></tr>';
+  document.getElementById('paginacao-perguntas').innerHTML = htmlPaginacao(paginaPerguntas, perguntas.length, POR_PAGINA_PERGUNTAS, 'irPaginaPerguntas');
+}
+function irPaginaPerguntas(pagina) { paginaPerguntas = pagina; carregarPerguntas(); }
+function abrirModal(item = null) {
+  document.getElementById('modal-titulo').textContent = item ? 'Editar pergunta' : 'Adicionar pergunta';
+  document.getElementById('pergunta-id').value = item?.ID || '';
+  document.getElementById('pergunta-texto').value = item?.Pergunta || '';
+  document.getElementById('pergunta-complemento').value = item?.Complemento || '';
+  document.getElementById('pergunta-ordem').value = item?.Ordem || (perguntas.length + 1);
+  document.getElementById('modal-pergunta').classList.replace('hidden', 'flex');
+}
+function fecharModal() { document.getElementById('modal-pergunta').classList.replace('flex', 'hidden'); }
+document.getElementById('form-pergunta').addEventListener('submit', async event => {
+  event.preventDefault();
+  const id = document.getElementById('pergunta-id').value;
+  const payload = {
+    Pergunta: document.getElementById('pergunta-texto').value.trim(),
+    Complemento: document.getElementById('pergunta-complemento').value.trim(),
+    Ordem: Number(document.getElementById('pergunta-ordem').value)
+  };
+  try {
+    await api(id ? `perguntas-anamnese/${id}` : 'perguntas-anamnese', { method: id ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+    fecharModal(); toast('Pergunta salva.'); await carregarPerguntas();
+  } catch (error) { toast(error.message, 'erro'); }
+});
+async function excluirPergunta(id) {
+  if (!confirmarExclusao('Excluir esta pergunta da ficha admissional?')) return;
+  try { await api(`perguntas-anamnese/${id}`, { method: 'DELETE' }); toast('Pergunta excluída.'); await carregarPerguntas(); }
+  catch (error) { toast(error.message, 'erro'); }
+}
+carregarPerguntas().catch(error => toast(error.message, 'erro'));
+</script>
+
+<%- include('partials/foot') %>

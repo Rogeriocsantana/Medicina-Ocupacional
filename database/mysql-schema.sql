@@ -98,6 +98,10 @@ CREATE TABLE IF NOT EXISTS funcionarios (
   nome VARCHAR(255) NOT NULL,
   cpf CHAR(11) NOT NULL,
   data_nascimento DATE NOT NULL,
+  data_admissao DATE NULL,
+  ultimo_exame DATE NULL,
+  vencimento DATE NULL,
+  observacao_condicao VARCHAR(100) NULL,
   criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -106,6 +110,7 @@ CREATE TABLE IF NOT EXISTS funcionarios (
   KEY idx_funcionarios_setor (setor_id),
   KEY idx_funcionarios_cargo (cargo_id),
   KEY idx_funcionarios_nome (nome),
+  KEY idx_funcionarios_vencimento (vencimento),
   CONSTRAINT fk_funcionarios_empresa
     FOREIGN KEY (empresa_id) REFERENCES empresas (id)
     ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -157,6 +162,10 @@ CREATE TABLE IF NOT EXISTS config_geral (
   especialidade VARCHAR(150) NULL,
   rqe VARCHAR(80) NULL,
   icone_medico VARCHAR(80) NULL,
+  backup_intervalo_dias SMALLINT UNSIGNED NOT NULL DEFAULT 7,
+  backup_retencao_dias SMALLINT UNSIGNED NOT NULL DEFAULT 90,
+  ultimo_backup_automatico_em DATETIME NULL,
+  ultimo_backup_em DATETIME NULL,
   atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   CONSTRAINT chk_config_geral_unico CHECK (id = 1)
@@ -182,6 +191,7 @@ CREATE TABLE IF NOT EXISTS historico_aso (
   data_avaliacao_clinica DATE NULL,
   riscos_snapshot JSON NULL,
   documento_snapshot JSON NULL,
+  controle_funcionario_anterior JSON NULL,
   criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_historico_aso_cpf (cpf),

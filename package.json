@@ -1,12 +1,14 @@
 {
   "name": "aso-pcmso-clinica-pierro",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Sistema de gestão ocupacional e emissão de ASO com persistência MySQL",
   "main": "server/index.js",
   "bin": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "db:check": "node server/check-db.js",
+    "db:migrate": "node server/migrate-db.js",
+    "db:clear-test-data": "node server/clear-test-data.js",
     "build:win": "pkg . --targets node18-win-x64 --output dist/ASO-PCMSO-ClinicaPierro.exe"
   },
   "pkg": {
@@ -16,6 +18,7 @@
     "assets": [
       "views/**/*",
       "public/**/*",
+      "database/**/*",
       "node_modules/pdfkit/js/data/**/*",
       "node_modules/es-get-iterator/**/*"
     ]

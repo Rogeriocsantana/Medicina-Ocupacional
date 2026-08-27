@@ -7,6 +7,7 @@ services:
 
     volumes:
       - ./:/app
+      - ${BACKUP_HOST_DIR:-./backups}:/backups
 
     environment:
       HOST: 0.0.0.0
@@ -16,8 +17,11 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_NAME: medicina_db
-      DB_USER: hst
+      DB_USER: medicina_app
       DB_PASSWORD: ${DB_PASSWORD}
+      RUN_DB_MIGRATIONS: "true"
+      BACKUP_DIR: /backups
+      BACKUP_DISPLAY_DIR: ${BACKUP_HOST_DIR:-./backups}
 
     command: npm start
     restart: unless-stopped

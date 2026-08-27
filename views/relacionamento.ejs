@@ -4,289 +4,56 @@
 
 <div class="mb-stack-lg">
   <div class="flex flex-wrap gap-4 justify-between items-end">
-    <div><h3 class="font-headline-lg text-headline-lg text-on-surface">Relacionamentos por cargo</h3><p class="text-on-surface-variant font-body-md text-body-md mt-1">Configure os riscos ocupacionais e os exames complementares de cada cargo.</p></div>
-    <div class="relative w-full sm:w-72"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span><input id="busca-cargo-relacionamento" type="text" placeholder="Buscar cargo..." class="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary text-body-md"></div>
+    <div><h3 class="font-headline-lg text-headline-lg text-on-surface">Relacionamentos por perfil ocupacional</h3><p class="text-on-surface-variant font-body-md text-body-md mt-1">Riscos e exames definidos pela combinação de setor e cargo conforme o PCMSO 2026.</p></div>
+    <div class="flex flex-wrap gap-3 w-full sm:w-auto"><div class="relative w-full sm:w-80"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span><input id="busca-perfil" type="text" placeholder="Buscar setor ou cargo..." class="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary text-body-md"></div><select id="filtro-pendencia" class="px-4 py-2.5 bg-surface-container-low border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary text-body-md"><option value="todos">Todos os perfis</option><option value="pendentes">Somente pendentes</option></select></div>
   </div>
-  <div class="inline-flex mt-5 bg-surface-container p-1 rounded-xl border border-border-subtle" role="tablist">
-    <button id="aba-riscos" onclick="mostrarAba('riscos')" class="px-5 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md">Cargo × Riscos</button>
-    <button id="aba-exames" onclick="mostrarAba('exames')" class="px-5 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md">Cargo × Exames</button>
-  </div>
+  <div class="inline-flex flex-wrap mt-5 bg-surface-container p-1 rounded-xl border border-border-subtle"><button id="aba-riscos" onclick="mostrarAba('riscos')" class="px-5 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md">Perfil × Riscos</button><button id="aba-exames" onclick="mostrarAba('exames')" class="px-5 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md">Perfil × Exames</button><button id="aba-vencimento" onclick="mostrarAba('vencimento')" class="px-5 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md">Perfil × Vencimento</button></div>
 </div>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Cargos cadastrados</p><p id="stat-cargos-mapeados" class="text-headline-lg text-primary mt-2">–</p></div>
-  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Riscos vinculados</p><p id="stat-riscos-vinculados" class="text-headline-lg text-primary mt-2">–</p></div>
-  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Exames vinculados</p><p id="stat-exames-vinculados" class="text-headline-lg text-primary mt-2">–</p></div>
-  <div class="bg-surface border border-border-subtle rounded-xl p-4 card-animate card-enter"><p class="text-label-caps uppercase text-on-surface-variant">Status</p><p id="stat-status" class="text-body-lg font-bold mt-2">Carregando...</p></div>
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
+  <div class="bg-surface border border-border-subtle rounded-xl p-4"><p class="text-label-caps uppercase text-on-surface-variant">Perfis cadastrados</p><p id="stat-perfis" class="text-headline-lg text-primary mt-2">–</p></div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-4"><p class="text-label-caps uppercase text-on-surface-variant">Riscos do perfil</p><p id="stat-riscos" class="text-headline-lg text-primary mt-2">–</p></div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-4"><p class="text-label-caps uppercase text-on-surface-variant">Exames do perfil</p><p id="stat-exames" class="text-headline-lg text-primary mt-2">–</p></div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-4"><p class="text-label-caps uppercase text-on-surface-variant">Regras do perfil</p><p id="stat-regras" class="text-headline-lg text-primary mt-2">–</p></div>
+  <div class="bg-surface border border-border-subtle rounded-xl p-4"><p id="stat-pendentes-titulo" class="text-label-caps uppercase text-on-surface-variant">Perfis pendentes de riscos</p><p id="stat-pendentes" class="text-headline-lg text-error mt-2">–</p></div>
 </div>
 
-<div id="painel-exames" class="hidden grid grid-cols-1 md:grid-cols-3 gap-stack-md">
-  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden md:col-span-1">
-    <div class="px-4 py-3 border-b border-border-subtle bg-background-main">
-      <h4 class="font-headline-md text-headline-md text-on-surface" style="font-size:16px">Cargos</h4>
-    </div>
-    <div id="lista-cargos-exames" class="divide-y divide-border-subtle">
-      <div class="px-4 py-4 text-on-surface-variant">Carregando...</div>
-    </div>
-    <div id="paginacao-cargos-exames"></div>
-  </div>
-
+<div class="grid grid-cols-1 md:grid-cols-3 gap-stack-md">
+  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden md:col-span-1"><div class="px-4 py-3 border-b border-border-subtle bg-background-main"><h4 class="font-headline-md" style="font-size:16px">Setor + Cargo</h4></div><div id="lista-perfis" class="divide-y divide-border-subtle"><div class="px-4 py-4 text-on-surface-variant">Carregando...</div></div><div id="paginacao-perfis"></div></div>
   <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden md:col-span-2">
-    <div class="px-6 py-4 border-b border-border-subtle bg-background-main flex justify-between items-center">
-      <h4 id="titulo-cargo-exames" class="font-headline-md text-headline-md text-on-surface" style="font-size:16px">Selecione um cargo à esquerda</h4>
-      <button id="btn-salvar-exames" onclick="salvarExamesCargo()" disabled class="bg-primary text-white px-5 py-2 rounded-lg font-bold disabled:opacity-40 flex items-center gap-2">
-        <span class="material-symbols-outlined text-sm">save</span> Salvar vínculos
-      </button>
-    </div>
-    <div id="lista-exames-setor" class="p-6 space-y-2">
-      <p class="text-on-surface-variant">Nenhum cargo selecionado.</p>
-    </div>
+    <div class="px-6 py-4 border-b border-border-subtle bg-background-main flex justify-between items-center gap-3"><h4 id="titulo-perfil" class="font-headline-md" style="font-size:16px">Selecione um perfil à esquerda</h4><div id="acoes-riscos" class="flex items-center gap-2"><button id="btn-cancelar-riscos" onclick="cancelarAlteracoes()" disabled class="px-5 py-2 rounded-lg font-bold text-on-surface-variant hover:bg-surface-container-low disabled:opacity-40">Cancelar</button><button id="btn-salvar-riscos" onclick="salvarRiscos()" disabled class="bg-primary text-white px-5 py-2 rounded-lg font-bold disabled:opacity-40 flex items-center gap-2"><span class="material-symbols-outlined text-sm">save</span> Salvar riscos</button></div><div id="acoes-exames" class="hidden flex items-center gap-2"><button id="btn-adicionar-regra" onclick="adicionarRegra()" disabled class="px-4 py-2 rounded-lg font-bold text-primary hover:bg-primary-fixed disabled:opacity-40">Adicionar regra</button><button id="btn-cancelar-exames" onclick="cancelarRegras()" disabled class="px-4 py-2 rounded-lg font-bold text-on-surface-variant hover:bg-surface-container-low disabled:opacity-40">Cancelar</button><button id="btn-salvar-exames" onclick="salvarRegras()" disabled class="bg-primary text-white px-4 py-2 rounded-lg font-bold disabled:opacity-40 flex items-center gap-2"><span class="material-symbols-outlined text-sm">save</span> Salvar regras</button></div><div id="acoes-vencimento" class="hidden flex items-center gap-2"><button id="btn-cancelar-vencimento" onclick="carregarVencimento()" disabled class="px-4 py-2 rounded-lg font-bold text-on-surface-variant hover:bg-surface-container-low disabled:opacity-40">Cancelar</button><button id="btn-salvar-vencimento" onclick="salvarVencimento()" disabled class="bg-primary text-white px-4 py-2 rounded-lg font-bold disabled:opacity-40">Salvar vencimento</button></div></div>
+    <div id="conteudo-riscos" class="p-6 space-y-6"><p class="text-on-surface-variant">Nenhum perfil selecionado.</p></div><div id="conteudo-exames" class="hidden p-6 space-y-5"><p class="text-on-surface-variant">Nenhum perfil selecionado.</p></div><div id="conteudo-vencimento" class="hidden p-6"><p class="text-on-surface-variant">Nenhum perfil selecionado.</p></div>
   </div>
 </div>
 
-<div id="painel-riscos" class="grid grid-cols-1 md:grid-cols-3 gap-stack-md">
-  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden md:col-span-1">
-    <div class="px-4 py-3 border-b border-border-subtle bg-background-main">
-      <h4 class="font-headline-md text-headline-md text-on-surface" style="font-size:16px">Cargos</h4>
-    </div>
-    <div id="lista-cargos" class="divide-y divide-border-subtle">
-      <div class="px-4 py-4 text-on-surface-variant">Carregando...</div>
-    </div>
-    <div id="paginacao-cargos-riscos"></div>
-  </div>
-
-  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden md:col-span-2">
-    <div class="px-6 py-4 border-b border-border-subtle bg-background-main flex justify-between items-center">
-      <h4 id="titulo-cargo-selecionado" class="font-headline-md text-headline-md text-on-surface" style="font-size:16px">Selecione um cargo à esquerda</h4>
-      <button id="btn-salvar" onclick="salvarRelacionamento()" disabled class="bg-primary text-white px-5 py-2 rounded-lg font-bold disabled:opacity-40 flex items-center gap-2">
-        <span class="material-symbols-outlined text-sm">save</span> Salvar Vínculos
-      </button>
-    </div>
-    <div id="grupos-riscos" class="p-6 space-y-6">
-      <p class="text-on-surface-variant">Nenhum cargo selecionado.</p>
-    </div>
-  </div>
-</div>
-
+<style>.campo-regra{width:100%;padding:.55rem .65rem;border:1px solid #DEE2E6;border-radius:.5rem;background:#fff}.campo-regra:focus{outline:2px solid #00478d;outline-offset:1px}</style>
 <script>
-let ORDEM_GRUPOS = ['Biológico', 'Físico', 'Químico', 'Ergonômico', 'Acidente'];
-let cargoSelecionadoId = null;
-let cargoAtivoId = null;
-let cargosRiscos = [];
-let todosRiscos = [];
-let cargoExameSelecionadoId = null;
-let cargosExames = [];
-let todosExames = [];
-let paginaCargosRiscos = 1;
-let paginaCargosExames = 1;
-const CARGOS_POR_PAGINA = 5;
-let buscaCargoRelacionamento = '';
-
-function obterTotal(lista, id, campo) {
-  const item = lista.find(cargo => String(cargo.ID) === String(id));
-  return Number(item?.[campo] || 0);
-}
-
-function atualizarIndicadores() {
-  const totalCargos = Math.max(cargosRiscos.length, cargosExames.length);
-  const riscos = cargoAtivoId === null
-    ? cargosRiscos.reduce((total, cargo) => total + Number(cargo.totalRiscos || 0), 0)
-    : obterTotal(cargosRiscos, cargoAtivoId, 'totalRiscos');
-  const exames = cargoAtivoId === null
-    ? cargosExames.reduce((total, cargo) => total + Number(cargo.totalExames || 0), 0)
-    : obterTotal(cargosExames, cargoAtivoId, 'totalExames');
-  const pendentes = cargosRiscos.filter(cargo => Number(cargo.totalRiscos || 0) === 0 && obterTotal(cargosExames, cargo.ID, 'totalExames') === 0).length;
-  const status = document.getElementById('stat-status');
-  const emDia = cargoAtivoId === null ? pendentes === 0 : riscos > 0 || exames > 0;
-
-  document.getElementById('stat-cargos-mapeados').textContent = totalCargos;
-  document.getElementById('stat-riscos-vinculados').textContent = riscos;
-  document.getElementById('stat-exames-vinculados').textContent = exames;
-  status.textContent = cargoAtivoId === null
-    ? (emDia ? 'Todos em dia' : `${pendentes} pendente(s)`)
-    : (emDia ? 'Em dia' : 'Pendente');
-  status.className = `text-body-lg font-bold mt-2 ${emDia ? 'text-status-ergonomic' : 'text-error'}`;
-}
-
-function mostrarAba(aba) {
-  const riscos = aba === 'riscos';
-  document.getElementById('painel-riscos').classList.toggle('hidden', !riscos);
-  document.getElementById('painel-exames').classList.toggle('hidden', riscos);
-  document.getElementById('painel-riscos').classList.toggle('grid', riscos);
-  document.getElementById('painel-exames').classList.toggle('grid', !riscos);
-  document.getElementById('aba-riscos').className = riscos
-    ? 'px-5 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md'
-    : 'px-5 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md';
-  document.getElementById('aba-exames').className = !riscos
-    ? 'px-5 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md'
-    : 'px-5 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md';
-
-  if (cargoAtivoId === null) return;
-  if (riscos) {
-    const cargo = cargosRiscos.find(item => String(item.ID) === String(cargoAtivoId));
-    selecionarCargo(cargoAtivoId, cargo ? cargo.Nome : '');
-  } else {
-    selecionarCargoExame(cargoAtivoId);
-  }
-}
-
-async function carregarCargos() {
-  const el = document.getElementById('lista-cargos');
-  try {
-    const resumo = await api('cargo-risco/resumo');
-    cargosRiscos = resumo;
-    if (!resumo.length) {
-      el.innerHTML = '<div class="px-4 py-4 text-on-surface-variant">Nenhum cargo cadastrado.</div>';
-      return;
-    }
-    atualizarIndicadores();
-    const filtrados = resumo.filter(cargo => String(cargo.Nome || '').toLowerCase().includes(buscaCargoRelacionamento));
-    const pagina = filtrados.slice((paginaCargosRiscos - 1) * CARGOS_POR_PAGINA, paginaCargosRiscos * CARGOS_POR_PAGINA);
-    el.innerHTML = pagina.map(c => `
-      <button onclick="selecionarCargo(${c.ID}, '${c.Nome.replace(/'/g, "\\'")}')" id="cargo-item-${c.ID}"
-        class="w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex justify-between items-center ${String(c.ID) === String(cargoAtivoId) ? 'bg-secondary-container font-bold' : ''}">
-        <span class="font-body-md">${c.Nome}</span>
-        <span class="text-xs px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant">${c.totalRiscos} risco(s)</span>
-      </button>`).join('');
-    document.getElementById('paginacao-cargos-riscos').innerHTML = htmlPaginacao(paginaCargosRiscos, filtrados.length, CARGOS_POR_PAGINA, 'irPaginaCargosRiscos');
-  } catch (err) {
-    el.innerHTML = `<div class="px-4 py-4 text-error">${err.message}</div>`;
-  }
-}
-function irPaginaCargosRiscos(pagina) { if (pagina >= 1) { paginaCargosRiscos = pagina; carregarCargos(); } }
-
-async function selecionarCargo(id, nome) {
-  cargoSelecionadoId = id;
-  cargoAtivoId = id;
-  atualizarIndicadores();
-  document.querySelectorAll('[id^="cargo-item-"]').forEach(b => b.classList.remove('bg-secondary-container', 'font-bold'));
-  const item = document.getElementById(`cargo-item-${id}`);
-  if (item) item.classList.add('bg-secondary-container', 'font-bold');
-
-  document.getElementById('titulo-cargo-selecionado').textContent = `Riscos para: ${nome}`;
-  document.getElementById('btn-salvar').disabled = false;
-
-  const grupos = document.getElementById('grupos-riscos');
-  grupos.innerHTML = '<p class="text-on-surface-variant">Carregando riscos...</p>';
-
-  try {
-    if (!todosRiscos.length) todosRiscos = await api('riscos');
-    const gruposCadastro = await api('grupos-risco');
-    ORDEM_GRUPOS = gruposCadastro.map(grupo => grupo.Nome);
-    const vinculo = await api(`cargo-risco/${id}`);
-    const selecionados = new Set(vinculo.riscoIds.map(String));
-
-    grupos.innerHTML = ORDEM_GRUPOS.map(grupo => {
-      const doGrupo = todosRiscos.filter(r => r.Grupo === grupo);
-      if (!doGrupo.length) return '';
-      return `
-        <div>
-          <h5 class="font-bold text-body-md mb-2 text-on-surface">${grupo}</h5>
-          <div class="space-y-2">
-            ${doGrupo.map(r => `
-              <label class="flex items-start gap-3 p-3 border border-border-subtle rounded-lg hover:bg-surface-container-low cursor-pointer">
-                <input type="checkbox" value="${r.ID}" class="chk-risco mt-1" ${selecionados.has(String(r.ID)) ? 'checked' : ''}>
-                <span class="text-body-md">${r.Descricao}</span>
-              </label>`).join('')}
-          </div>
-        </div>`;
-    }).join('') || '<p class="text-on-surface-variant">Nenhum risco cadastrado ainda. Cadastre riscos primeiro.</p>';
-  } catch (err) {
-    grupos.innerHTML = `<p class="text-error">${err.message}</p>`;
-  }
-}
-
-async function salvarRelacionamento() {
-  if (!cargoSelecionadoId) return;
-  const riscoIds = Array.from(document.querySelectorAll('.chk-risco:checked')).map(c => Number(c.value));
-  try {
-    await api('cargo-risco', { method: 'POST', body: JSON.stringify({ cargoId: cargoSelecionadoId, riscoIds }) });
-    toast('Vínculos salvos com sucesso.');
-    carregarCargos();
-  } catch (err) {
-    toast(err.message, 'erro');
-  }
-}
-
-async function carregarCargosExames() {
-  const el = document.getElementById('lista-cargos-exames');
-  try {
-    cargosExames = await api('cargo-exame/resumo');
-    atualizarIndicadores();
-    if (!cargosExames.length) {
-      el.innerHTML = '<div class="px-4 py-4 text-on-surface-variant">Nenhum cargo cadastrado.</div>';
-      return;
-    }
-    document.getElementById('stat-exames-vinculados').textContent = cargosExames.reduce((total, c) => total + Number(c.totalExames || 0), 0);
-    const filtrados = cargosExames.filter(cargo => String(cargo.Nome || '').toLowerCase().includes(buscaCargoRelacionamento));
-    const pagina = filtrados.slice((paginaCargosExames - 1) * CARGOS_POR_PAGINA, paginaCargosExames * CARGOS_POR_PAGINA);
-    el.innerHTML = pagina.map(cargo => `
-      <button onclick="selecionarCargoExame(${cargo.ID})" id="cargo-exame-item-${cargo.ID}"
-        class="w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex justify-between items-center ${String(cargo.ID) === String(cargoAtivoId) ? 'bg-secondary-container font-bold' : ''}">
-        <span class="font-body-md">${escapeHtml(cargo.Nome)}</span>
-        <span class="text-xs px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant">${cargo.totalExames} exame(s)</span>
-      </button>`).join('');
-    document.getElementById('paginacao-cargos-exames').innerHTML = htmlPaginacao(paginaCargosExames, filtrados.length, CARGOS_POR_PAGINA, 'irPaginaCargosExames');
-  } catch (err) {
-    el.innerHTML = `<div class="px-4 py-4 text-error">${escapeHtml(err.message)}</div>`;
-  }
-}
-function irPaginaCargosExames(pagina) { if (pagina >= 1) { paginaCargosExames = pagina; carregarCargosExames(); } }
-
-async function selecionarCargoExame(id) {
-  cargoExameSelecionadoId = id;
-  cargoAtivoId = id;
-  atualizarIndicadores();
-  const cargo = cargosExames.find(item => String(item.ID) === String(id));
-  document.querySelectorAll('[id^="cargo-exame-item-"]').forEach(b => b.classList.remove('bg-secondary-container', 'font-bold'));
-  const item = document.getElementById(`cargo-exame-item-${id}`);
-  if (item) item.classList.add('bg-secondary-container', 'font-bold');
-  document.getElementById('titulo-cargo-exames').textContent = `Exames para: ${cargo ? cargo.Nome : ''}`;
-  document.getElementById('btn-salvar-exames').disabled = false;
-
-  const lista = document.getElementById('lista-exames-setor');
-  lista.innerHTML = '<p class="text-on-surface-variant">Carregando exames...</p>';
-  try {
-    if (!todosExames.length) todosExames = await api('exames-complementares');
-    const vinculo = await api(`cargo-exame/${id}`);
-    const selecionados = new Set(vinculo.exameIds.map(String));
-    lista.innerHTML = todosExames.length
-      ? todosExames.map(exame => `
-        <label class="flex items-center gap-3 p-3 border border-border-subtle rounded-lg hover:bg-surface-container-low cursor-pointer">
-          <input type="checkbox" value="${exame.ID}" class="chk-exame-setor" ${selecionados.has(String(exame.ID)) ? 'checked' : ''}>
-          <span class="text-body-md">${escapeHtml(exame.Nome)}</span>
-        </label>`).join('')
-      : '<p class="text-on-surface-variant">Nenhum exame complementar cadastrado. Cadastre-o na tela de Exames Complementares.</p>';
-  } catch (err) {
-    lista.innerHTML = `<p class="text-error">${escapeHtml(err.message)}</p>`;
-  }
-}
-
-async function salvarExamesCargo() {
-  if (!cargoExameSelecionadoId) return;
-  const exameIds = Array.from(document.querySelectorAll('.chk-exame-setor:checked')).map(c => Number(c.value));
-  try {
-    await api('cargo-exame', { method: 'POST', body: JSON.stringify({ cargoId: cargoExameSelecionadoId, exameIds }) });
-    toast('Vínculos de exames salvos com sucesso.');
-    carregarCargosExames();
-  } catch (err) {
-    toast(err.message, 'erro');
-  }
-}
-
-carregarCargos();
-carregarCargosExames();
-let debounceBuscaRelacionamento;
-document.getElementById('busca-cargo-relacionamento').addEventListener('input', event => {
-  clearTimeout(debounceBuscaRelacionamento);
-  paginaCargosRiscos = 1;
-  paginaCargosExames = 1;
-  debounceBuscaRelacionamento = setTimeout(() => {
-    buscaCargoRelacionamento = event.target.value.toLowerCase().trim();
-    carregarCargos();
-    carregarCargosExames();
-  }, 250);
-});
+let perfis=[],riscos=[],grupos=[],examesCatalogo=[],tiposCatalogo=[],regrasEdicao=[],selecionado=null,abaAtual='riscos',pagina=1,busca='',filtroPendencia='todos';const POR_PAGINA=5;
+function labelPerfil(p){return `${p.SetorNome} · ${p.CargoNome}`}
+function perfilPendente(p,aba=abaAtual){return aba==='riscos'?Number(p.totalRiscos||0)===0:aba==='exames'?Number(p.totalRegras||0)===0:false}
+function atualizarCards(){const pendentes=abaAtual==='vencimento'?perfis.filter(p=>Number(p.PeriodicidadeVencimentoMeses||12)===12).length:perfis.filter(p=>perfilPendente(p)).length;document.getElementById('stat-perfis').textContent=perfis.length;document.getElementById('stat-riscos').textContent=selecionado?Number(selecionado.totalRiscos||0):perfis.reduce((n,p)=>n+Number(p.totalRiscos||0),0);document.getElementById('stat-exames').textContent=selecionado?Number(selecionado.totalExames||0):perfis.reduce((n,p)=>n+Number(p.totalExames||0),0);document.getElementById('stat-regras').textContent=selecionado?Number(selecionado.totalRegras||0):perfis.reduce((n,p)=>n+Number(p.totalRegras||0),0);document.getElementById('stat-pendentes-titulo').textContent=abaAtual==='riscos'?'Perfis pendentes de riscos':abaAtual==='exames'?'Perfis pendentes de exames':'Perfis com padrão de 12 meses';document.getElementById('stat-pendentes').textContent=pendentes}
+function mostrarAba(aba){abaAtual=aba;pagina=1;for(const nome of ['riscos','exames','vencimento']){const ativo=nome===aba;document.getElementById(`conteudo-${nome}`).classList.toggle('hidden',!ativo);document.getElementById(`acoes-${nome}`).classList.toggle('hidden',!ativo);document.getElementById(`aba-${nome}`).className=ativo?'px-5 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md':'px-5 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md'}atualizarCards();renderPerfis();if(selecionado)carregarPerfil()}
+function renderPerfis(){const filtrados=perfis.filter(p=>labelPerfil(p).toLocaleLowerCase('pt-BR').includes(busca)&&(abaAtual==='vencimento'||filtroPendencia!=='pendentes'||perfilPendente(p)));const totalPaginas=Math.max(1,Math.ceil(filtrados.length/POR_PAGINA));if(pagina>totalPaginas)pagina=totalPaginas;const itens=filtrados.slice((pagina-1)*POR_PAGINA,pagina*POR_PAGINA);document.getElementById('lista-perfis').innerHTML=itens.map(p=>`<button onclick="selecionarPerfil(${p.SetorID},${p.CargoID})" class="w-full text-left px-4 py-3 hover:bg-surface-container-low ${selecionado&&String(selecionado.ID)===String(p.ID)?'bg-secondary-container font-bold':''}"><span class="block text-xs text-on-surface-variant">${escapeHtml(p.SetorNome)}</span><span class="block text-body-md mt-1">${escapeHtml(p.CargoNome)}</span><span class="block text-xs mt-1 ${perfilPendente(p)?'text-error font-bold':'text-on-surface-variant'}">${abaAtual==='vencimento'?`${Number(p.PeriodicidadeVencimentoMeses||12)} meses`:perfilPendente(p)?`Pendente — sem ${abaAtual==='riscos'?'riscos':'regras de exames'}`:`${p.totalRiscos} risco(s) · ${p.totalExames} exame(s)`}</span></button>`).join('')||'<div class="px-4 py-4 text-on-surface-variant">Nenhum perfil encontrado.</div>';document.getElementById('paginacao-perfis').innerHTML=htmlPaginacao(pagina,filtrados.length,POR_PAGINA,'irPagina')}
+function perfisParaCopia(tipo){const campo=tipo==='riscos'?'totalRiscos':'totalRegras';return perfis.filter(p=>Number(p.TemPerfil)&&Number(p[campo]||0)>0&&(!selecionado||String(p.SetorID)!==String(selecionado.SetorID)||String(p.CargoID)!==String(selecionado.CargoID))).sort((a,b)=>labelPerfil(a).localeCompare(labelPerfil(b),'pt-BR'))}
+function htmlCopiarPerfil(tipo){const titulo=tipo==='riscos'?'riscos':'regras de exames',lista=perfisParaCopia(tipo),id=`perfil-copia-${tipo}`;return `<div class="border border-primary/20 bg-primary-fixed/30 rounded-xl p-4"><div class="flex flex-wrap items-end gap-3"><div class="flex-1 min-w-[16rem]"><label for="${id}" class="block font-semibold mb-1">Copiar ${titulo} de outro perfil pronto</label><input id="${id}" list="lista-${id}" placeholder="Digite o setor ou cargo para pesquisar..." autocomplete="off" class="w-full px-4 py-2.5 bg-surface border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary"><datalist id="lista-${id}">${lista.map(p=>`<option value="${escapeHtml(labelPerfil(p))}"></option>`).join('')}</datalist></div><button type="button" onclick="copiarPerfil('${tipo}')" class="px-4 py-2.5 rounded-lg font-bold text-primary bg-surface border border-primary hover:bg-primary-fixed disabled:opacity-40" ${lista.length?'':'disabled'}><span class="material-symbols-outlined align-middle text-[20px] mr-1">content_copy</span> Copiar</button></div><p class="text-sm text-on-surface-variant mt-2">A cópia só será gravada quando você clicar em Salvar.</p></div>`}
+function localizarPerfilCopia(tipo){const input=document.getElementById(`perfil-copia-${tipo}`),termo=String(input?.value||'').toLocaleLowerCase('pt-BR').trim();return perfisParaCopia(tipo).find(p=>labelPerfil(p).toLocaleLowerCase('pt-BR')===termo)}
+async function copiarPerfil(tipo){if(!selecionado)return;const origem=localizarPerfilCopia(tipo);if(!origem){toast('Selecione um perfil pronto da lista.','erro');return}try{if(tipo==='riscos'){const v=await api(`cargo-risco/${origem.CargoID}?setorId=${origem.SetorID}`),ids=new Set(v.riscoIds.map(String));document.querySelectorAll('.chk-risco').forEach(c=>{c.checked=ids.has(String(c.value))});toast(`Riscos copiados de ${labelPerfil(origem)}. Clique em Salvar riscos para confirmar.`)}else{const v=await api(`cargo-exame/${origem.CargoID}?setorId=${origem.SetorID}`);regrasEdicao=v.regras.map(r=>({exameId:Number(r.ExameID),tipoExameId:Number(r.TipoExameID),periodicidadeMeses:r.PeriodicidadeMeses==null?'':Number(r.PeriodicidadeMeses)}));renderRegras();toast(`Regras copiadas de ${labelPerfil(origem)}. Clique em Salvar regras para confirmar.`)}}catch(e){toast(e.message,'erro')}}
+function irPagina(p){if(p>=1){pagina=p;renderPerfis()}}
+async function selecionarPerfil(setorId,cargoId){selecionado=perfis.find(p=>String(p.SetorID)===String(setorId)&&String(p.CargoID)===String(cargoId));renderPerfis();atualizarCards();await carregarPerfil()}
+async function carregarPerfil(){if(!selecionado)return;document.getElementById('titulo-perfil').textContent=labelPerfil(selecionado);for(const id of ['btn-salvar-riscos','btn-cancelar-riscos','btn-adicionar-regra','btn-cancelar-exames','btn-salvar-exames','btn-cancelar-vencimento','btn-salvar-vencimento'])document.getElementById(id).disabled=false;if(abaAtual==='riscos')await carregarRiscos();else if(abaAtual==='exames')await carregarExames();else await carregarVencimento()}
+async function carregarRiscos(){const box=document.getElementById('conteudo-riscos');box.innerHTML='<p class="text-on-surface-variant">Carregando riscos...</p>';try{if(!riscos.length)[riscos,grupos]=await Promise.all([api('riscos'),api('grupos-risco')]);const v=await api(`cargo-risco/${selecionado.CargoID}?setorId=${selecionado.SetorID}`),ids=new Set(v.riscoIds.map(String));box.innerHTML=htmlCopiarPerfil('riscos')+grupos.map(g=>{const itens=riscos.filter(r=>r.Grupo===g.Nome);if(!itens.length)return'';return `<section><h5 class="font-bold mb-2">${escapeHtml(g.Nome)}</h5><div class="space-y-2">${itens.map(r=>`<label class="flex items-start gap-3 p-3 border border-border-subtle rounded-lg"><input type="checkbox" class="chk-risco mt-1" value="${r.ID}" ${ids.has(String(r.ID))?'checked':''}><span><strong>${escapeHtml(r.Descricao)}</strong>${r.Agravos?`<small class="block text-on-surface-variant mt-1">${escapeHtml(r.Agravos)}</small>`:''}</span></label>`).join('')}</div></section>`}).join('')}catch(e){box.innerHTML=`<p class="text-error">${escapeHtml(e.message)}</p>`}}
+async function salvarRiscos(){if(!selecionado)return;const riscoIds=[...document.querySelectorAll('.chk-risco:checked')].map(x=>Number(x.value));try{await api('cargo-risco',{method:'POST',body:JSON.stringify({setorId:selecionado.SetorID,cargoId:selecionado.CargoID,riscoIds})});toast('Riscos do perfil salvos.');await carregarResumo(true)}catch(e){toast(e.message,'erro')}}
+async function cancelarAlteracoes(){if(!selecionado)return;await carregarRiscos();toast('Alterações descartadas.')}
+async function carregarExames(){const box=document.getElementById('conteudo-exames');box.innerHTML='<p class="text-on-surface-variant">Carregando regras...</p>';try{const tarefas=[api(`cargo-exame/${selecionado.CargoID}?setorId=${selecionado.SetorID}`)];if(!examesCatalogo.length)tarefas.push(api('exames-complementares'));if(!tiposCatalogo.length)tarefas.push(api('tipos-exame'));const resultados=await Promise.all(tarefas),v=resultados.shift();if(!examesCatalogo.length)examesCatalogo=resultados.shift();if(!tiposCatalogo.length)tiposCatalogo=resultados.shift();regrasEdicao=v.regras.map(r=>({exameId:Number(r.ExameID),tipoExameId:Number(r.TipoExameID),periodicidadeMeses:r.PeriodicidadeMeses==null?'':Number(r.PeriodicidadeMeses)}));renderRegras()}catch(e){box.innerHTML=`<p class="text-error">${escapeHtml(e.message)}</p>`}}
+function renderRegras(){const box=document.getElementById('conteudo-exames');box.innerHTML=htmlCopiarPerfil('exames')+`<div class="border border-border-subtle rounded-lg overflow-hidden"><div class="grid grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_8rem_3rem] gap-3 px-4 py-3 bg-background-main text-label-caps uppercase"><span>Exame</span><span>Tipo</span><span>Periodicidade</span><span></span></div>${regrasEdicao.map((r,i)=>`<div class="grid grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_8rem_3rem] gap-3 px-4 py-3 border-t border-border-subtle items-center"><select class="campo-regra" onchange="alterarRegra(${i},'exameId',this.value)">${examesCatalogo.map(e=>`<option value="${e.ID}" ${Number(e.ID)===r.exameId?'selected':''}>${escapeHtml(e.Nome)}</option>`).join('')}</select><select class="campo-regra" onchange="alterarRegra(${i},'tipoExameId',this.value)">${tiposCatalogo.map(t=>`<option value="${t.ID}" ${Number(t.ID)===r.tipoExameId?'selected':''}>${escapeHtml(t.Nome)}</option>`).join('')}</select><input class="campo-regra" type="number" min="1" max="120" placeholder="Obrigatório" value="${r.periodicidadeMeses}" onchange="alterarRegra(${i},'periodicidadeMeses',this.value)"><button onclick="removerRegra(${i})" class="p-2 text-error hover:bg-error-container rounded" title="Remover regra"><span class="material-symbols-outlined">delete</span></button></div>`).join('')}</div>${regrasEdicao.length?'':'<p class="text-on-surface-variant">Nenhuma regra. Use “Adicionar regra”.</p>'}`}
+function alterarRegra(i,campo,valor){regrasEdicao[i][campo]=campo==='periodicidadeMeses'?(valor===''?'':Number(valor)):Number(valor)}
+function removerRegra(i){regrasEdicao.splice(i,1);renderRegras()}
+function adicionarRegra(){for(const t of tiposCatalogo){for(const e of examesCatalogo){if(!regrasEdicao.some(r=>r.exameId===Number(e.ID)&&r.tipoExameId===Number(t.ID))){regrasEdicao.push({exameId:Number(e.ID),tipoExameId:Number(t.ID),periodicidadeMeses:''});renderRegras();return}}}toast('Todas as combinações de exame e tipo já foram adicionadas.','erro')}
+async function cancelarRegras(){if(!selecionado)return;await carregarExames();toast('Alterações descartadas.')}
+async function salvarRegras(){if(!selecionado)return;try{await api('cargo-exame',{method:'POST',body:JSON.stringify({setorId:selecionado.SetorID,cargoId:selecionado.CargoID,regras:regrasEdicao})});toast('Regras de exames salvas.');await carregarResumo(true);await carregarExames()}catch(e){toast(e.message,'erro')}}
+async function carregarVencimento(){if(!selecionado)return;const box=document.getElementById('conteudo-vencimento');try{const v=await api(`perfil-vencimento/${selecionado.CargoID}?setorId=${selecionado.SetorID}`);box.innerHTML=`<div class="max-w-lg"><label for="periodicidade-vencimento" class="block font-semibold mb-2">Validade do exame periódico</label><div class="flex items-center gap-3"><input id="periodicidade-vencimento" type="number" min="1" max="120" value="${Number(v.periodicidadeMeses||12)}" class="w-32 px-4 py-2.5 border border-border-subtle rounded-lg bg-surface"><span class="text-on-surface-variant">meses</span></div><p class="text-sm text-on-surface-variant mt-3">O padrão é 12 meses. O vencimento dos colaboradores deste perfil será recalculado a partir do último exame realizado.</p></div>`}catch(e){box.innerHTML=`<p class="text-error">${escapeHtml(e.message)}</p>`}}
+async function salvarVencimento(){if(!selecionado)return;const meses=Number(document.getElementById('periodicidade-vencimento').value);try{await api('perfil-vencimento',{method:'POST',body:JSON.stringify({setorId:selecionado.SetorID,cargoId:selecionado.CargoID,periodicidadeMeses:meses})});toast('Periodicidade do perfil salva.');await carregarResumo(true);await carregarVencimento()}catch(e){toast(e.message,'erro')}}
+async function carregarResumo(preservar=false){try{const setorId=selecionado?.SetorID,cargoId=selecionado?.CargoID;perfis=await api('cargo-risco/resumo');if(preservar&&setorId&&cargoId)selecionado=perfis.find(p=>String(p.SetorID)===String(setorId)&&String(p.CargoID)===String(cargoId))||null;atualizarCards();renderPerfis()}catch(e){document.getElementById('lista-perfis').innerHTML=`<div class="p-4 text-error">${escapeHtml(e.message)}</div>`}}
+document.getElementById('busca-perfil').addEventListener('input',e=>{busca=e.target.value.toLocaleLowerCase('pt-BR').trim();pagina=1;renderPerfis()});document.getElementById('filtro-pendencia').addEventListener('change',e=>{filtroPendencia=e.target.value;pagina=1;renderPerfis()});carregarResumo();
 </script>
-
 <%- include('partials/foot') %>
