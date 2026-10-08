@@ -49,8 +49,8 @@ function createApplication() {
   const dataRoot = getDataRoot();
 
   app.set('trust proxy', true);
-  application.use(express.json());
-  application.use(express.urlencoded({ extended: true }));
+  application.use(express.json({ limit: '25mb' }));
+  application.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
   app.set('view engine', 'ejs');
   app.set('views', path.join(resourceRoot, 'views'));
@@ -92,6 +92,9 @@ function createApplication() {
     '/relacionamento': 'relacionamento',
     '/gerar-pdf': 'gerar-pdf',
     '/historico': 'historico',
+    '/registros-ocupacionais': 'registros-ocupacionais',
+    '/indicadores': 'indicadores',
+    '/relatorios': 'relatorios',
     '/perguntas-anamnese': 'perguntas-anamnese',
     '/configuracoes': 'configuracoes'
   };

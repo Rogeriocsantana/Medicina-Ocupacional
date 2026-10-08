@@ -1,33 +1,35 @@
 <body class="bg-background-main text-on-surface">
+<div id="mo-navigation-progress" aria-hidden="true"><span></span></div>
+<div id="mo-initial-loader" role="status" aria-label="Carregando sistema"><div id="mo-initial-track" class="config-preview-track"><span></span></div><img class="mo-loader-logo-light" src="<%= baseUrl('public/images/hst-logo.png') %>" alt=""><img class="mo-loader-logo-dark" src="<%= baseUrl('public/images/logo-icone-branco.png') %>" alt=""><svg class="mo-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" class="mo-spinner-arc"/></svg><span class="sr-only">Carregando sistema</span></div>
 <aside id="app-sidebar" class="app-sidebar fixed left-0 top-0 h-full flex flex-col pt-4 pb-8 z-40 bg-surface border-r border-border-subtle">
   <div class="sidebar-top px-4 mb-8 flex items-center justify-between gap-2">
     <div class="sidebar-brand flex items-center gap-3 min-w-0">
-      <img src="<%= baseUrl('public/images/logo-icone.jpg') %>" alt="Santa Tereza" class="theme-logo-light h-11 w-11 rounded-lg object-contain bg-white p-1 border border-border-subtle">
-      <img src="<%= baseUrl('public/images/logo-icone-escuro.png') %>" alt="Santa Tereza" class="theme-logo-dark hidden h-11 w-11 rounded-lg object-contain p-1">
+      <img src="<%= baseUrl('public/images/hst-logo.png') %>" alt="Medicina Ocupacional" class="sidebar-logo sidebar-logo-light h-11 w-11 object-contain"><img src="<%= baseUrl('public/images/logo-icone-branco.png') %>" alt="" class="sidebar-logo sidebar-logo-dark h-11 w-11 object-contain">
       <div class="sidebar-brand-text flex flex-col">
-        <h1 class="text-base font-semibold text-primary leading-tight whitespace-nowrap">Santa Tereza</h1>
+        <h1 class="text-base font-semibold text-primary leading-tight whitespace-nowrap">Medicina</h1>
         <p class="text-on-surface-variant text-[11px] tracking-wider uppercase font-semibold mt-1">Gestão Ocupacional</p>
       </div>
     </div>
     <button id="sidebar-toggle" type="button" onclick="alternarMenuLateral()" class="sidebar-toggle" aria-label="Fechar barra lateral" aria-expanded="true">
-      <span id="sidebar-toggle-icon" data-ui-icon="panel"></span>
+      <span id="sidebar-toggle-icon" data-ui-icon="collapse"></span>
       <span id="sidebar-toggle-tooltip" class="sidebar-hover-tooltip sidebar-toggle-tooltip">Fechar barra lateral</span>
     </button>
   </div>
   <nav class="sidebar-nav flex-1 px-3 space-y-1">
     <% const links = [
-      { href: '', icon: 'dashboard', label: 'Dashboard', key: 'dashboard' },
+      { href: '', icon: 'dashboard', label: 'Painel', key: 'dashboard' },
       { href: 'setores', icon: 'building', label: 'Setores', key: 'setores' },
       { href: 'cargos', icon: 'briefcase', label: 'Cargos', key: 'cargos' },
       { href: 'funcionarios', icon: 'users', label: 'Funcionários', key: 'funcionarios' },
       { href: 'riscos', icon: 'alert', label: 'Riscos', key: 'riscos' },
       { href: 'exames-complementares', icon: 'microscope', label: 'Exames', key: 'exames-complementares' },
-      { href: 'perguntas-anamnese', icon: 'fileText', label: 'Anamnese', key: 'perguntas-anamnese' },
+      { href: 'perguntas-anamnese', icon: 'checklist', label: 'Anamnese', key: 'perguntas-anamnese' },
       { href: 'relacionamento', icon: 'branch', label: 'Relacionamento', key: 'relacionamento' },
-      { href: 'historico', icon: 'history', label: 'Histórico', key: 'historico' }
+      { href: 'historico', icon: 'fileText', label: 'Registros', key: 'registros-ocupacionais' }
+      ,{ href: 'indicadores', icon: 'chart', label: 'Indicadores', key: 'indicadores' }
     ]; %>
     <% links.forEach(l => { %>
-      <a href="<%= baseUrl(l.href) %>" aria-label="<%= l.label %>" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg font-body-md text-body-md transition-all <%= active === l.key ? 'sidebar-link-active' : 'text-on-surface-variant hover:bg-surface-container-low' %>">
+      <a href="<%= baseUrl(l.href) %>" aria-label="<%= l.label %>" <%= active === l.key ? 'aria-current="page"' : '' %> class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg font-body-md text-body-md transition-all <%= active === l.key ? 'sidebar-link-active' : 'text-on-surface-variant hover:bg-surface-container-low' %>">
         <span data-ui-icon="<%= l.icon %>"></span>
         <span class="sidebar-label"><%= l.label %></span>
         <span class="sidebar-hover-tooltip"><%= l.label %></span>
@@ -35,9 +37,9 @@
     <% }) %>
   </nav>
   <div class="sidebar-pdf-wrap px-4 mt-6">
-    <a href="<%= baseUrl('gerar-pdf') %>" title="Gerar Novo PDF" data-tooltip="Gerar Novo PDF" class="sidebar-pdf w-full py-3 px-4 bg-primary text-white font-bold rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
+    <a href="<%= baseUrl('gerar-pdf') %>" title="Gerar novo ASO" data-tooltip="Gerar novo ASO" class="sidebar-pdf w-full py-3 px-4 bg-primary text-white font-bold rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
       <span data-ui-icon="fileText"></span>
-      <span class="sidebar-pdf-label">Gerar Novo PDF</span>
+      <span class="sidebar-pdf-label">Gerar novo ASO</span>
     </a>
   </div>
 </aside>
@@ -53,18 +55,21 @@
       <button id="theme-toggle" type="button" onclick="alternarTema()" title="Alternar tema" aria-label="Usar tema escuro" class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors">
         <span id="theme-toggle-icon" data-ui-icon="moon"></span>
       </button>
-      <a href="<%= baseUrl('configuracoes') %>" title="Configurações" class="p-2 rounded-full transition-colors <%= active === 'configuracoes' ? 'bg-secondary-container text-primary' : 'text-on-surface-variant hover:bg-surface-container-low' %>">
+      <a href="<%= baseUrl('relatorios') %>" title="Central de relatórios" aria-label="Central de relatórios" class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors <%= active === 'relatorios' ? 'bg-secondary-container text-primary' : '' %>">
+        <span data-ui-icon="printer"></span>
+      </a>
+      <a href="<%= baseUrl('configuracoes') %>" title="Configurações" aria-label="Configurações" class="p-2 rounded-full transition-colors <%= active === 'configuracoes' ? 'bg-secondary-container text-primary' : 'text-on-surface-variant hover:bg-surface-container-low' %>">
         <span data-ui-icon="settings"></span>
       </a>
       <div class="hidden sm:flex items-center gap-2 pl-3 border-l border-border-subtle">
         <span class="hidden md:block text-right leading-tight"><span id="nav-medico" class="block text-body-md font-semibold text-on-surface">Médico coordenador</span><span id="nav-especialidade" class="block text-[11px] text-on-surface-variant">Medicina do Trabalho</span></span>
         <span title="Médico coordenador" class="w-9 h-9 rounded-full bg-primary-fixed text-primary flex items-center justify-center border border-primary-fixed-dim">
-          <span id="nav-icone-medico" class="material-symbols-outlined text-[21px]">medical_services</span>
+          <span id="nav-avatar-iniciais" class="text-[11px] font-bold">MC</span>
         </span>
       </div>
     </div>
   </header>
-  <div id="toast-container" class="fixed top-20 right-6 z-50 space-y-2"></div>
+  <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 space-y-2"></div>
   <div class="p-gutter flex-1">
 
 <script>
@@ -72,7 +77,7 @@ function aplicarEstadoMenuLateral() {
   const recolhido = document.documentElement.classList.contains('sidebar-collapsed');
   const icone = document.getElementById('sidebar-toggle-icon');
   const botao = document.getElementById('sidebar-toggle');
-  if (icone) { icone.dataset.uiIcon = 'panel'; renderUiIcons(icone.parentElement); }
+  if (icone) { icone.dataset.uiIcon = 'collapse'; renderUiIcons(icone.parentElement); }
   if (botao) {
     const texto = recolhido ? 'Abrir barra lateral' : 'Fechar barra lateral';
     botao.setAttribute('aria-label', texto);
@@ -107,8 +112,6 @@ function aplicarTema() {
   const escuro = document.documentElement.classList.contains('dark');
   const icone = document.getElementById('theme-toggle-icon');
   const botao = document.getElementById('theme-toggle');
-  document.querySelectorAll('.theme-logo-light').forEach(el => el.classList.toggle('hidden', escuro));
-  document.querySelectorAll('.theme-logo-dark').forEach(el => el.classList.toggle('hidden', !escuro));
   if (icone) { icone.dataset.uiIcon = escuro ? 'sun' : 'moon'; renderUiIcons(icone.parentElement); }
   if (botao) botao.setAttribute('aria-label', escuro ? 'Usar tema claro' : 'Usar tema escuro');
 }
@@ -127,8 +130,8 @@ api('config').then(config => {
   const especialidade = document.getElementById('nav-especialidade');
   if (medico && config.Medico) medico.textContent = config.Medico;
   if (especialidade && config.Especialidade) especialidade.textContent = config.Especialidade;
-  const icone = document.getElementById('nav-icone-medico');
-  if (icone) icone.textContent = config.IconeMedico || 'medical_services';
+  const avatar = document.getElementById('nav-avatar-iniciais');
+  if (avatar && config.Medico) avatar.textContent = config.Medico.replace(/^Dr\.?\s*/i, '').trim().split(/\s+/).slice(0, 2).map(parte => parte[0]).join('').toUpperCase() || 'MC';
 }).catch(() => {});
 
 </script>

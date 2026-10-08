@@ -2,13 +2,13 @@
 
 Sistema interno do Hospital Santa Tereza para gestão de saúde ocupacional. Centraliza cadastros, perfis ocupacionais, vencimentos, emissão de ASOs e anamneses em PDF, mantendo os dados em MySQL.
 
-**Versão atual:** `1.2.0`
+**Última release publicada:** `1.2.0`. As alterações posteriores estão descritas em [CHANGELOG.md](CHANGELOG.md), na seção Não publicado.
 
 ## Recursos principais
 
 - Dashboard com indicadores e últimos ASOs emitidos.
 - Cadastros de empresas, setores, cargos, funcionários, riscos, exames e grupos de risco.
-- Busca e paginação de cinco registros por página nas listas administrativas.
+- Busca e paginação: sete itens em setores/cargos, seis em funcionários/riscos/exames e cinco em registros/histórico.
 - Relacionamentos por perfil ocupacional: **Setor + Cargo × Riscos** e **Setor + Cargo × Exames**.
 - Regras de exames editáveis por perfil, tipo de ASO e periodicidade, com ações para adicionar, remover, cancelar e salvar.
 - Perfis usados por colaboradores mas ausentes no PCMSO aparecem como pendentes, sem herdar vínculos de outro setor.
@@ -18,6 +18,9 @@ Sistema interno do Hospital Santa Tereza para gestão de saúde ocupacional. Cen
 - Persistência relacional no MySQL, com integridade por chaves estrangeiras.
 - Cadastro de múltiplas empresas e seleção da empresa no funcionário.
 - Campos de **status** e **situação** no cadastro do funcionário.
+- Código externo opcional do funcionário, único por empresa, exibido antes do nome e pesquisável; filtro de ativos sem código (exceto Só Nutri).
+- Registros de exames realizados, acidentes/CAT, encaminhamentos, atestados, condições e presença médica, com modelos XLSX e prévia de importação.
+- Condições transitórias com início/fim e sincronização com a edição do cadastro de funcionários.
 - Importação segura de funcionários por XLSX, com lote temporário, mapeamento de empresas, validação de CPF e tela de conflitos antes da efetivação.
 - Configuração independente dos dados do médico coordenador.
 - Cadastro nas abas **Tipos de Exames** e **Exames Complementares** da tela Exames.
@@ -26,6 +29,7 @@ Sistema interno do Hospital Santa Tereza para gestão de saúde ocupacional. Cen
 - Compatibilidade com Docker e Nginx Reverse Proxy.
 - Datas geradas no fuso horário `America/Sao_Paulo`.
 - Interface responsiva, tema claro/escuro e menu lateral recolhível.
+- Preferências visuais configuráveis, seletores pesquisáveis, feedback de ações e modais com título e ações fixos.
 - Anamnese admissional configurável, com questionário e ficha clínica em PDF separado do ASO.
 - Backup automático em pasta externa, com frequência, retenção, restauração integral e exportação do schema MySQL.
 
@@ -118,6 +122,20 @@ e `DELETE`. Migrações estruturais devem ser executadas durante a publicação 
 um usuário administrativo do MySQL; a aplicação valida a versão pelo conteúdo
 de `schema_migrations`.
 
+A versão deste código exige a migração `022_codigo_funcionario`. Antes de atualizar
+um ambiente existente, faça backup, aplique as migrações pendentes com credenciais
+administrativas e somente depois reinicie a aplicação. `npm run db:migrate` usa
+as credenciais `DB_*` do ambiente; não promove o usuário da aplicação a administrador.
+
+Atenção: o Compose atual define `RUN_DB_MIGRATIONS=true`. Com o usuário restrito
+`medicina_app`, novas alterações de estrutura serão recusadas. Em produção,
+configure esse valor como `false` no Compose depois de executar as migrações
+administrativamente. Não amplie as permissões permanentes da aplicação.
+
+Revise as migrações antes de aplicá-las: a `006_carga_pcmso_2026` substitui
+catálogos e relacionamentos ocupacionais com o seed institucional. Não reaplique
+essa carga em um banco operacional já migrado.
+
 ### Iniciar com Docker
 
 O `compose.yaml` utiliza o contêiner `node:22-alpine`, conecta a aplicação à
@@ -204,15 +222,15 @@ para os exemplos completos.
 ## Regras de negócio
 
 ```text
-Cargo
+Perfil ocupacional (Setor + Cargo)
  ├── Riscos ocupacionais
  └── Exames complementares
 ```
 
-- Riscos e exames do ASO são carregados pelo cargo atual do funcionário.
+- Riscos e exames do ASO são carregados pelo perfil atual de setor + cargo e pelas regras do tipo de ASO.
 - Cada funcionário pertence a uma empresa cadastrada, cujos dados são usados no cabeçalho do ASO.
-- Funcionários possuem data de admissão, último exame, vencimento e observação/condição. O `Status` (`NO PRAZO`, `ATRASADO` ou `SEM VENCIMENTO`) e os dias de atraso são calculados dinamicamente pelo vencimento; `Situação` permanece controlada entre `ATIVO`, `AFASTADO` e `DESLIGADO`.
-- Uma nova emissão de ASO, exceto demissional, atualiza o último exame e projeta o vencimento em 12 meses. O histórico versiona as datas anteriores; ao excluir a emissão mais recente, o controle anterior do colaborador é restaurado.
+- Funcionários possuem admissão, último exame, vencimento e observação/condição. O `Status` (`NO PRAZO`, `ATRASADO` ou `SEM VENCIMENTO`) e os dias de atraso são calculados pelo vencimento. `Situação` aceita `ATIVO` ou `DESLIGADO`, com data de desligamento quando aplicável. Afastamento e demais condições transitórias são gerenciados separadamente, com início e fim.
+- Uma nova emissão de ASO, exceto demissional, atualiza o último exame e projeta o vencimento pela periodicidade do perfil (12 meses por padrão). O histórico versiona as datas anteriores; ao excluir a emissão mais recente, o controle anterior do colaborador é restaurado.
 - A aba **Configurações > Backup** cria um pacote `.medbackup` completo, contendo todas as tabelas de dados e os arquivos institucionais. A restauração valida formato, integridade e compatibilidade de esquema antes de substituir os dados.
 - O backup automático cria uma pasta datada dentro de `BACKUP_HOST_DIR`. Cada pasta contém `gestao-ocupacional.medbackup` e `medicina-db-schema.sql`. A frequência (1 a 365 dias) e a retenção (1 a 3650 dias) são configuradas na própria tela; pastas automáticas vencidas são removidas integralmente pelo sistema.
 - O botão **Baixar schema SQL** exporta a estrutura completa do MySQL e as versões de migração para preparar um banco vazio em outro servidor. Depois, o conteúdo pode ser restaurado com o `.medbackup`.
@@ -259,6 +277,22 @@ protegido separadamente pelo Git.
 
 ## Scripts
 
+### Importação de atestados
+
+Na aba **Registros > Atestados**, baixe o modelo atualizado e preencha a aba
+**Registros**. A aba **Instruções** explica o preenchimento.
+
+- Informe pelo menos um identificador: **CPF**, **Código Funcionário** ou **Cod + Nome**.
+- CPF sozinho identifica o cadastro sem exigir código ou CNPJ.
+- Código ou `1109 - NOME` exige **CNPJ da empresa**, pois códigos podem se repetir em empresas distintas.
+- Se preencher vários identificadores, todos devem corresponder ao mesmo funcionário.
+- O nome do cadastro é preservado; o nome da planilha não altera o cadastro e não é usado sozinho para criar vínculo.
+- **Data de Início**, **Tipo** (`DIAS` ou `HORAS`) e **Quantidade** positiva são obrigatórios.
+- Confira a prévia: linhas com erro não são importadas. A confirmação revalida o vínculo; registros idênticos por funcionário, início, tipo e quantidade não são inseridos novamente.
+- Este fluxo recebe nosso modelo. O relatório original de outro sistema não é um formato de importação suportado.
+
+### Comandos disponíveis
+
 | Comando | Descrição |
 | --- | --- |
 | `npm start` | Inicia a aplicação. |
@@ -266,6 +300,7 @@ protegido separadamente pelo Git.
 | `npm run db:migrate` | Aplica migrações com as credenciais administrativas fornecidas no ambiente. |
 | `CONFIRM_CLEAR_TEST_DATA=SIM npm run db:clear-test-data` | Remove dados operacionais de teste e preserva empresas/configurações. Uso administrativo. |
 | `npm run build:win` | Gera o executável Windows. |
+| `node --test server/tests/identificadorFuncionario.test.js server/tests/importacaoAtestados.test.js` | Testa os identificadores e a prévia de atestados sem gravar registros. |
 
 ## Gerar executável Windows
 
@@ -279,6 +314,7 @@ O executável será gerado em `dist/ASO-PCMSO-ClinicaPierro.exe`.
 
 ```text
 database/                 Migrações e esquema do MySQL
+database/data/            Dados operacionais locais (não versionados)
 dados/                    Banco Excel legado (não operacional)
 docs/                     Arquitetura e requisitos
 public/                   Arquivos estáticos e imagens
@@ -306,4 +342,16 @@ Por decisão do projeto, o sistema não possui autenticação própria. Portanto
 acesso deve permanecer restrito pela rede do hospital, firewall e proxy
 reverso. O endpoint de diagnóstico só é habilitado quando
 `ENABLE_DEBUG_DUMP=true` for definido explicitamente.
+
+### Antes de enviar ao GitHub
+
+O repositório público deve conter código, migrações, testes e documentação,
+não os dados operacionais. `.gitignore` exclui `.env`, planilhas, PDFs,
+backups e `database/data/`. O script pontual de preenchimento dos códigos
+também permanece local, pois depende do arquivo com os vínculos pessoais.
+
+No GitHub Desktop, confira a lista **Changes** antes do commit. `.gitignore`
+não remove arquivos já rastreados: se algum dado sensível já estiver versionado,
+interrompa o envio e trate também o histórico. Não publique nomes, CPFs,
+atestados ou credenciais. Um repositório privado também não substitui essa proteção.
 

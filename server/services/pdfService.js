@@ -29,6 +29,18 @@ function resolveLogoPath() {
   return candidates.find(p => fs.existsSync(p)) || null;
 }
 
+function resolveLogo(config = {}) {
+  const custom = String(config.LogoData || '').trim();
+  const match = custom.match(/^data:image\/(?:png|jpe?g);base64,([A-Za-z0-9+/=]+)$/i);
+  if (match) {
+    try {
+      const buffer = Buffer.from(match[1], 'base64');
+      if (buffer.length) return buffer;
+    } catch (_) {}
+  }
+  return resolveLogoPath();
+}
+
 function formatDataExtenso(date = new Date(), cidade = 'Campinas') {
   return 'Campinas, ____ de __________________ de 2026';
 }
@@ -82,7 +94,7 @@ function gerarAsoPdf({
       rqe: config.RQE || ''
     };
 
-    const logoPath = resolveLogoPath();
+    const logoPath = resolveLogo(config);
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const left = doc.page.margins.left;
     const stroke = '#000000';
@@ -406,7 +418,7 @@ function gerarFichaClinicaPdf({
     function cabecalho(continuacao = false) {
       let y = doc.page.margins.top;
       caixa(left, y, width, 42, '#f3f4f6');
-      const logo = resolveLogoPath();
+      const logo = resolveLogo(config);
       if (logo) doc.image(logo, left + 7, y + 7, { fit: [120, 28] });
       doc.fillColor('#111827').font('Helvetica-Bold').fontSize(15)
         .text(`ANAMNESE CLÍNICA${continuacao ? ' - CONTINUAÇÃO' : ''}`, left + 130, y + 12, { width: width - 140, align: 'center' });

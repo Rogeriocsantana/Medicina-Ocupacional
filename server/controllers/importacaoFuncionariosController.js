@@ -7,6 +7,21 @@ function errorResponse(res, error, fallback) {
 }
 
 module.exports = {
+  async baixarModelo(req, res) {
+    try {
+      const buffer = await service.generateTemplate();
+      res.set({
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="modelo-importacao-funcionarios.xlsx"',
+        'Content-Length': buffer.length,
+        'Cache-Control': 'no-store'
+      });
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      errorResponse(res, error, 'Falha ao gerar o modelo de importação.');
+    }
+  },
+
   async listar(req, res) {
     try {
       res.json(await service.listBatches());

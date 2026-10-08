@@ -2,46 +2,47 @@
 <%- include('partials/head', {pageTitle}) %>
 <%- include('partials/nav', {pageTitle, active: 'perguntas-anamnese'}) %>
 
-<div class="mb-stack-lg flex flex-wrap items-end justify-between gap-4">
+<div class="approved-page-header">
   <div>
-    <h3 class="font-headline-lg text-headline-lg text-on-surface">Perguntas admissionais</h3>
-    <p class="text-on-surface-variant font-body-md text-body-md mt-1">Defina as perguntas, o campo complementar e a ordem exibida na ficha de anamnese admissional.</p>
+    <h3 class="approved-page-title">Configure as perguntas da anamnese</h3>
+    <p class="approved-page-subtitle">Modelos de perguntas aplicados aos exames ocupacionais.</p>
   </div>
-  <button onclick="abrirModal()" class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:opacity-90">
-    <span class="material-symbols-outlined">add</span>Adicionar pergunta
+  <button onclick="abrirModal()" class="approved-button primary">
+    <span class="material-symbols-outlined">add</span>Nova pergunta
   </button>
 </div>
 
-<div id="paginacao-perguntas"></div>
-<section class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+<div class="anamnese-approved-grid">
+<section class="approved-data-card anamnese-lista overflow-hidden">
+  <div class="px-5 py-4 border-b border-border-subtle"><h4 class="font-semibold">Modelo admissional</h4></div>
   <table class="w-full text-left">
     <thead class="bg-background-main border-b border-border-subtle"><tr>
-      <th class="px-6 py-4 text-label-caps uppercase">Ordem</th>
-      <th class="px-6 py-4 text-label-caps uppercase">Pergunta</th>
-      <th class="px-6 py-4 text-label-caps uppercase">Complemento quando “Sim”</th>
-      <th class="px-6 py-4 text-label-caps uppercase text-right">Ações</th>
+      <th class="px-4 py-2 text-label-caps">Pergunta</th>
+      <th class="px-4 py-2 text-label-caps">Tipo</th>
+      <th class="px-4 py-2 text-label-caps text-right">Ações</th>
     </tr></thead>
-    <tbody id="tbody-perguntas" class="font-table-data text-table-data"><tr><td colspan="4" class="px-6 py-4">Carregando...</td></tr></tbody>
+    <tbody id="tbody-perguntas" class="font-table-data text-table-data"><tr><td colspan="3" class="px-6 py-4">Carregando...</td></tr></tbody>
   </table>
+  <div id="paginacao-perguntas" class="px-4"></div>
 </section>
 
-<div id="modal-pergunta" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop p-4">
-  <div class="bg-surface rounded-xl w-full max-w-xl p-6 border border-border-subtle shadow-xl">
+<aside id="modal-pergunta" class="approved-data-card p-5 self-start">
     <h3 id="modal-titulo" class="font-headline-md text-headline-md mb-4">Adicionar pergunta</h3>
     <form id="form-pergunta" class="space-y-4">
       <input type="hidden" id="pergunta-id">
-      <div><label class="block font-semibold mb-1">Pergunta</label><input id="pergunta-texto" maxlength="255" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg"></div>
-      <div><label class="block font-semibold mb-1">Complemento quando a resposta for “Sim”</label><input id="pergunta-complemento" maxlength="120" placeholder="Ex.: Qual? ou Frequência?" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg"></div>
-      <div><label class="block font-semibold mb-1">Ordem</label><input id="pergunta-ordem" type="number" min="1" max="999" required class="w-32 px-4 py-2.5 border border-border-subtle rounded-lg"></div>
-      <div class="flex justify-end gap-3"><button type="button" onclick="fecharModal()" class="px-5 py-2.5 font-semibold">Cancelar</button><button class="px-5 py-2.5 bg-primary text-white rounded-lg font-bold">Salvar</button></div>
+      <div><label class="block text-sm font-medium mb-1">Pergunta</label><input id="pergunta-texto" maxlength="255" required class="approved-input"></div>
+      <div><label class="block text-sm font-medium mb-1">Complemento quando a resposta for “Sim”</label><input id="pergunta-complemento" maxlength="120" placeholder="Ex.: Qual? ou Frequência?" class="approved-input"></div>
+      <div><label class="block text-sm font-medium mb-1">Ordem</label><input id="pergunta-ordem" type="number" min="1" max="999" required class="approved-input w-32"></div>
+      <div class="flex justify-end gap-3"><button type="button" onclick="fecharModal()" class="approved-button">Cancelar</button><button class="approved-button primary">Salvar pergunta</button></div>
     </form>
-  </div>
-</div>
+</aside></div>
+
+<style>.anamnese-lista tbody td{height:50px!important;padding:7px 12px!important}.anamnese-lista thead th{height:42px!important}.anamnese-lista .material-symbols-outlined{font-size:18px}</style>
 
 <script>
 let perguntas = [];
 let paginaPerguntas = 1;
-const POR_PAGINA_PERGUNTAS = 10;
+const POR_PAGINA_PERGUNTAS = 6;
 
 async function carregarPerguntas() {
   perguntas = await api('perguntas-anamnese');
@@ -49,14 +50,13 @@ async function carregarPerguntas() {
   const itens = perguntas.slice(inicio, inicio + POR_PAGINA_PERGUNTAS);
   document.getElementById('tbody-perguntas').innerHTML = itens.map(item => `
     <tr class="border-b border-border-subtle hover:bg-surface-container-low">
-      <td class="px-6 py-4">${item.Ordem}</td>
-      <td class="px-6 py-4 font-semibold">${escapeHtml(item.Pergunta)}</td>
-      <td class="px-6 py-4 text-on-surface-variant">${escapeHtml(item.Complemento || '—')}</td>
-      <td class="px-6 py-4 text-right">
-        <button onclick='abrirModal(${JSON.stringify(item).replace(/'/g, "&#39;")})' class="p-2 text-primary rounded hover:bg-primary-fixed" title="Editar"><span class="material-symbols-outlined">edit</span></button>
-        <button onclick="excluirPergunta(${item.ID})" class="p-2 text-error rounded hover:bg-error-container" title="Excluir"><span class="material-symbols-outlined">delete</span></button>
+      <td class="px-4 py-2 font-medium"><span class="inline-flex items-center justify-center w-6 h-6 mr-2 rounded-lg bg-blue-50 text-primary text-xs">${item.Ordem}</span>${escapeHtml(item.Pergunta)}${item.Complemento?`<small class="block mt-1 ml-7 px-2 py-1 rounded-lg bg-blue-50 text-blue-700 font-normal">↳ Se sim: ${escapeHtml(item.Complemento)}</small>`:''}</td>
+      <td class="px-4 py-2 text-on-surface-variant whitespace-nowrap">${item.Complemento?'Sim / Não':'Texto'}</td>
+      <td class="px-4 py-2 text-right whitespace-nowrap">
+        <button onclick='abrirModal(${JSON.stringify(item).replace(/'/g, "&#39;")})' class="approved-action" title="Editar" aria-label="Editar pergunta"><span class="material-symbols-outlined">edit</span></button>
+        <button onclick="excluirPergunta(${item.ID})" class="approved-action danger" title="Excluir" aria-label="Excluir pergunta"><span class="material-symbols-outlined">delete</span></button>
       </td>
-    </tr>`).join('') || '<tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Nenhuma pergunta cadastrada.</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="3" class="px-6 py-4 text-on-surface-variant">Nenhuma pergunta cadastrada.</td></tr>';
   document.getElementById('paginacao-perguntas').innerHTML = htmlPaginacao(paginaPerguntas, perguntas.length, POR_PAGINA_PERGUNTAS, 'irPaginaPerguntas');
 }
 function irPaginaPerguntas(pagina) { paginaPerguntas = pagina; carregarPerguntas(); }
@@ -66,9 +66,9 @@ function abrirModal(item = null) {
   document.getElementById('pergunta-texto').value = item?.Pergunta || '';
   document.getElementById('pergunta-complemento').value = item?.Complemento || '';
   document.getElementById('pergunta-ordem').value = item?.Ordem || (perguntas.length + 1);
-  document.getElementById('modal-pergunta').classList.replace('hidden', 'flex');
+  document.getElementById('pergunta-texto').focus();
 }
-function fecharModal() { document.getElementById('modal-pergunta').classList.replace('flex', 'hidden'); }
+function fecharModal() { abrirModal(); }
 document.getElementById('form-pergunta').addEventListener('submit', async event => {
   event.preventDefault();
   const id = document.getElementById('pergunta-id').value;
@@ -83,7 +83,7 @@ document.getElementById('form-pergunta').addEventListener('submit', async event 
   } catch (error) { toast(error.message, 'erro'); }
 });
 async function excluirPergunta(id) {
-  if (!confirmarExclusao('Excluir esta pergunta da ficha admissional?')) return;
+  if (!await confirmarExclusao('Excluir esta pergunta da ficha admissional?')) return;
   try { await api(`perguntas-anamnese/${id}`, { method: 'DELETE' }); toast('Pergunta excluída.'); await carregarPerguntas(); }
   catch (error) { toast(error.message, 'erro'); }
 }

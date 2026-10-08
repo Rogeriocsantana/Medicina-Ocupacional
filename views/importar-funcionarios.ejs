@@ -2,27 +2,30 @@
 <%- include('partials/head', {pageTitle}) %>
 <%- include('partials/nav', {pageTitle, active: 'funcionarios'}) %>
 
-<div class="flex justify-between items-end mb-6">
+<div class="approved-page-header">
   <div>
-    <h3 class="font-headline-lg text-headline-lg text-on-surface">Importar funcionários</h3>
-    <p class="text-on-surface-variant text-body-md mt-1">A planilha é analisada em uma área temporária. CPFs existentes serão atualizados, sem criar duplicidades.</p>
+    <h3 class="approved-page-title">Importar funcionários</h3>
+    <p class="approved-page-subtitle">Baixe o modelo, preencha e envie. A análise identifica inclusões, atualizações e conflitos antes de alterar o cadastro.</p>
   </div>
-  <a href="<%= baseUrl('funcionarios') %>" class="px-5 py-2.5 rounded-lg font-semibold text-primary bg-secondary-container">Voltar ao cadastro</a>
+  <div class="approved-header-actions">
+    <a href="<%= baseUrl('api/importacoes/funcionarios/modelo') %>" download class="approved-button"><span data-ui-icon="download"></span>Baixar modelo</a>
+    <a href="<%= baseUrl('funcionarios') %>" class="approved-button">Voltar ao cadastro</a>
+  </div>
 </div>
 
-<section class="bg-surface border border-border-subtle rounded-xl p-5 mb-5">
-  <div class="flex flex-wrap items-end gap-4">
-    <div class="flex-1 min-w-72">
+<section class="modern-surface p-5 mb-5">
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(280px,1fr)_190px_340px] items-end gap-3">
+    <div class="min-w-0">
       <label class="block font-semibold mb-1">Arquivo XLSX</label>
-      <input id="arquivo" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="w-full border border-border-subtle rounded-lg px-3 py-2 bg-white">
-      <p class="text-xs text-on-surface-variant mt-1">A aba esperada é “Periodicos”, com os títulos na linha 2.</p>
+      <input id="arquivo" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="approved-input !h-12 w-full px-3 py-2 bg-white file:mr-3 file:border-0 file:rounded-lg file:bg-primary-fixed file:text-primary file:px-3 file:py-1.5 file:font-semibold">
+      <p class="text-xs text-on-surface-variant mt-1">Use preferencialmente o modelo oficial. Planilhas antigas também são aceitas quando possuem colunas “Nome” e “CPF”.</p>
     </div>
-    <button id="btn-analisar" type="button" onclick="analisar()" class="px-5 py-2.5 rounded-lg font-bold bg-primary text-white flex items-center gap-2">
+    <button id="btn-analisar" type="button" onclick="analisar()" class="approved-button primary !h-12 w-full">
       <span class="material-symbols-outlined">manage_search</span> Analisar planilha
     </button>
-    <div class="min-w-72">
+    <div class="min-w-0">
       <label class="block font-semibold mb-1">Importações anteriores</label>
-      <select id="lotes" onchange="selecionarLote(this.value)" class="w-full border border-border-subtle rounded-lg px-3 py-2.5 bg-white"><option value="">Nenhuma</option></select>
+      <select id="lotes" onchange="selecionarLote(this.value)" class="approved-input !h-12 w-full"><option value="">Nenhuma</option></select>
     </div>
   </div>
 </section>
@@ -34,7 +37,7 @@
     <div class="flex justify-between items-center mb-3">
       <div>
         <h4 class="font-bold text-lg">Mapeamento das empresas</h4>
-        <p class="text-sm text-on-surface-variant">A coluna “CNPJ” da planilha contém códigos. Associe cada código à empresa correta.</p>
+        <p class="text-sm text-on-surface-variant">Empresas preenchidas pelo modelo são reconhecidas automaticamente. Associe manualmente apenas nomes ou códigos antigos.</p>
       </div>
     </div>
     <div id="mapeamentos" class="grid md:grid-cols-2 gap-3"></div>
@@ -52,6 +55,7 @@
       <label class="flex items-center gap-2"><input type="checkbox" value="setor"> Setor</label>
       <label class="flex items-center gap-2"><input type="checkbox" value="cargo"> Cargo</label>
       <label class="flex items-center gap-2"><input type="checkbox" value="condicao"> Condição</label>
+      <label class="flex items-center gap-2"><input type="checkbox" value="observacao_condicao"> Observação da condição</label>
       <label class="flex items-center gap-2"><input type="checkbox" value="situacao"> Situação</label>
     </div>
   </section>
@@ -94,6 +98,33 @@ function badge(estado) {
   return `<span class="px-2 py-1 rounded-full text-xs font-bold ${classes[estado] || 'bg-gray-100'}">${escapeHtml(estado)}</span>`;
 }
 
+function formatarValorImportacao(value, data = false) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (data && /^\d{4}-\d{2}-\d{2}/.test(String(value))) {
+    const [ano, mes, dia] = String(value).slice(0, 10).split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+  return String(value);
+}
+
+function comparacaoItem(item) {
+  if (!item.atual) return '';
+  const campos = [
+    ['Nome', item.atual.nome, item.nome],
+    ['Nascimento', item.atual.data_nascimento, item.data_nascimento, true],
+    ['Empresa', item.atual.empresa, item.empresa_codigo],
+    ['Setor', item.atual.setor, item.departamento],
+    ['Cargo', item.atual.cargo, item.cargo],
+    ['Admissão', item.atual.data_admissao, item.data_admissao, true],
+    ['Último exame', item.atual.ultimo_exame, item.ultimo_exame, true],
+    ['Condição', item.atual.condicao, item.condicao_origem],
+    ['Observação', item.atual.observacao_condicao, item.observacao_condicao_origem],
+    ['Situação', item.atual.situacao, item.situacao_origem]
+  ].filter(([, atual, novo]) => String(atual || '') !== String(novo || ''));
+  if (!campos.length) return '<div class="text-xs text-on-surface-variant mt-2">Cadastro já possui os mesmos valores.</div>';
+  return `<details class="mt-2 text-xs"><summary class="cursor-pointer font-semibold text-primary">Comparar ${campos.length} diferença(s)</summary><div class="mt-2 space-y-2 min-w-72">${campos.map(([nome, atual, novo, data]) => `<div><strong>${escapeHtml(nome)}:</strong><div class="grid grid-cols-2 gap-2"><span class="text-on-surface-variant">Atual: ${escapeHtml(formatarValorImportacao(atual, data))}</span><span>Planilha: ${escapeHtml(formatarValorImportacao(novo, data))}</span></div></div>`).join('')}</div></details>`;
+}
+
 async function carregarLotes(selecionar = '') {
   const lotes = await api('importacoes/funcionarios');
   const select = document.getElementById('lotes');
@@ -105,8 +136,6 @@ async function analisar() {
   const input = document.getElementById('arquivo');
   const file = input.files[0];
   if (!file) return toast('Selecione um arquivo XLSX.', 'erro');
-  const button = document.getElementById('btn-analisar');
-  button.disabled = true; button.classList.add('opacity-50');
   try {
     const response = await fetch(apiUrl('importacoes/funcionarios'), {
       method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name) },
@@ -117,7 +146,7 @@ async function analisar() {
     toast('Planilha analisada. Confira os conflitos antes de importar.');
     await carregarLotes(data.lote.id);
   } catch (error) { toast(error.message, 'erro'); }
-  finally { button.disabled = false; button.classList.remove('opacity-50'); }
+  finally { encerrarProcessamentoBotoes(); }
 }
 
 async function selecionarLote(id) {
@@ -155,7 +184,7 @@ function renderTabela() {
       <td class="px-4 py-3 whitespace-nowrap">${escapeHtml(formatCpf(i.cpf_normalizado || i.cpf || ''))}</td><td class="px-4 py-3">${escapeHtml(i.empresa_codigo || '')}</td>
       <td class="px-4 py-3">${escapeHtml(i.departamento || '')}</td><td class="px-4 py-3">${escapeHtml(i.cargo || '')}</td>
       <td class="px-4 py-3">${escapeHtml(i.status_origem || '')}</td><td class="px-4 py-3">${escapeHtml(i.situacao_origem || '')}</td>
-      <td class="px-4 py-3 min-w-72">${badge(i.estado)} ${i.acao==='ATUALIZAR'?'<span class="ml-1 px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">ATUALIZAR CADASTRO</span>':''} ${(i.conflitos || []).map(c => `<div class="text-xs mt-1 text-on-surface-variant">${escapeHtml(c)}</div>`).join('')}</td>
+      <td class="px-4 py-3 min-w-72">${badge(i.estado)} ${i.acao==='ATUALIZAR'?'<span class="ml-1 px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">ATUALIZAR CADASTRO</span>':'<span class="ml-1 px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">NOVO CADASTRO</span>'} ${(i.conflitos || []).map(c => `<div class="text-xs mt-1 text-on-surface-variant">${escapeHtml(c)}</div>`).join('')} ${comparacaoItem(i)}</td>
       <td class="px-4 py-3 text-right">${['IMPORTADO'].includes(i.estado) ? '' : `<button onclick="acaoItem(${i.id}, '${i.acao === 'IGNORAR' ? 'IMPORTAR' : 'IGNORAR'}')" class="text-sm font-bold ${i.acao === 'IGNORAR' ? 'text-primary' : 'text-error'}">${i.acao === 'IGNORAR' ? 'Restaurar' : 'Ignorar'}</button>`}</td>
     </tr>`).join('') || '<tr><td colspan="10" class="px-4 py-4 text-on-surface-variant">Nenhuma linha neste filtro.</td></tr>';
   document.getElementById('paginacao').innerHTML = htmlPaginacao(pagina, filtrados.length, POR_PAGINA, 'irPagina');
@@ -181,7 +210,7 @@ async function efetivar() {
   const camposAtualizacao = [...document.querySelectorAll('#campos-atualizacao input:checked')].map(input => input.value);
   const nomesCampos = [...document.querySelectorAll('#campos-atualizacao input:checked')].map(input => input.parentElement.textContent.trim());
   const resumo = nomesCampos.length ? nomesCampos.join(', ') : 'nenhum campo dos cadastros existentes';
-  if (!count || !confirm(`Processar ${count} linha(s) pronta(s)?\n\nEm CPFs existentes será atualizado: ${resumo}.\nNovos colaboradores receberão todos os dados.`)) return;
+  if (!count || !await confirmarExclusao(`Processar ${count} linha(s) pronta(s)?\n\nEm CPFs existentes será atualizado: ${resumo}.\nNovos colaboradores receberão todos os dados.`)) return;
   try {
     const result = await api(`importacoes/funcionarios/${loteAtual.lote.id}/efetivar`, { method: 'POST', body: JSON.stringify({ camposAtualizacao }) });
     loteAtual = result.dados;

@@ -1,40 +1,48 @@
 <% const pageTitle = 'Histórico de ASOs'; %>
 <%- include('partials/head', {pageTitle}) %>
-<%- include('partials/nav', {pageTitle, active: 'historico'}) %>
+<%- include('partials/nav', {pageTitle, active: 'registros-ocupacionais'}) %>
 
-<div class="mb-stack-lg">
-  <div class="flex justify-between items-center gap-4">
-    <h3 class="font-headline-lg text-headline-lg text-on-surface">Histórico de ASOs Gerados</h3>
-    <div class="relative flex items-center shrink-0">
-      <span class="material-symbols-outlined absolute left-3 text-on-surface-variant">search</span>
-      <input id="busca" type="text" placeholder="Buscar por nome, CPF, cargo ou setor..." class="pl-10 pr-4 py-2.5 bg-surface-container-low border-none rounded-full focus:ring-2 focus:ring-primary text-body-md w-80">
-    </div>
-  </div>
+<div class="mb-4">
+  <h3 class="font-headline-lg text-headline-lg text-on-surface">Histórico de ASOs Gerados</h3>
   <p class="text-on-surface-variant font-body-md text-body-md mt-1">
     <strong>Baixar</strong> reproduz a última versão emitida.
     <strong>Atualizar</strong> emite uma nova versão com data, riscos e dados atuais.
     <strong>Editar</strong> abre o formulário e salva no mesmo registro.
   </p>
 </div>
-<div id="paginacao-historico"></div>
+<div class="modern-tabs mb-4 overflow-x-auto whitespace-nowrap h-[42px] items-end">
+  <a href="<%= baseUrl('historico') %>" class="modern-tab active">ASOs e documentos</a>
+  <a href="<%= baseUrl('registros-ocupacionais') %>?aba=exames" class="modern-tab">Exames realizados</a>
+  <a href="<%= baseUrl('registros-ocupacionais') %>?aba=acidentes" class="modern-tab">Acidentes / CAT</a>
+  <a href="<%= baseUrl('registros-ocupacionais') %>?aba=encaminhamentos" class="modern-tab">Encaminhamentos</a>
+  <a href="<%= baseUrl('registros-ocupacionais') %>?aba=atestados" class="modern-tab">Atestados</a>
+  <a href="<%= baseUrl('registros-ocupacionais') %>?aba=condicoes" class="modern-tab">Condições</a>
+  <a href="<%= baseUrl('registros-ocupacionais') %>?aba=presencas" class="modern-tab">Presença médica</a>
+</div>
+<div class="mb-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(20rem,1fr)_repeat(2,minmax(10rem,13rem))] gap-3 items-center">
+  <div class="relative w-full md:col-span-2 xl:col-span-1">
+    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+    <input id="busca" type="text" placeholder="Buscar por nome, CPF, cargo ou setor..." class="pl-10 pr-4 py-2.5 bg-surface-container-low border-none rounded-full focus:ring-2 focus:ring-primary text-body-md w-full">
+  </div>
+</div>
 
 <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
   <table class="w-full text-left border-collapse">
     <thead class="bg-background-main border-b border-border-subtle">
       <tr>
-        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Nome</th>
-        <th class="px-4 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase whitespace-nowrap w-px">CPF</th>
-        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Cargo</th>
-        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Setor</th>
-        <th class="px-4 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase whitespace-nowrap w-px">Gerado em</th>
-        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase text-right min-w-[320px]">Ações</th>
+        <th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase">Nome</th>
+        <th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase">Cargo</th>
+        <th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase">Setor</th>
+        <th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase whitespace-nowrap w-px">Gerado em</th>
+        <th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase text-right min-w-[320px]">Ações</th>
       </tr>
     </thead>
     <tbody id="tbody-historico" class="divide-y divide-border-subtle font-table-data text-table-data">
-      <tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
+      <tr><td colspan="5" class="px-4 py-3 text-on-surface-variant">Carregando...</td></tr>
     </tbody>
   </table>
 </div>
+<div id="paginacao-historico"></div>
 
 <script>
 function btnAcao({ href, onclick, title, icon, cor = 'primary' }) {
@@ -57,18 +65,18 @@ async function carregarHistorico(busca = buscaHistoricoAtual) {
   try {
     const rows = await api(`historico?busca=${encodeURIComponent(busca)}`);
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Nenhum ASO encontrado.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-3 text-on-surface-variant">Nenhum ASO encontrado.</td></tr>';
+      document.getElementById('paginacao-historico').innerHTML = '';
       return;
     }
     const pagina = rows.slice((paginaHistorico - 1) * ITENS_POR_PAGINA, paginaHistorico * ITENS_POR_PAGINA);
     tbody.innerHTML = pagina.map(r => `
       <tr class="hover:bg-[#EBF2FA] transition-colors">
-        <td class="px-6 py-4 font-semibold">${escapeHtml(r.Nome)}</td>
-        <td class="px-4 py-4 font-table-data text-table-data whitespace-nowrap">${escapeHtml(r.CPF)}</td>
-        <td class="px-6 py-4">${escapeHtml(r.Cargo)}</td>
-        <td class="px-6 py-4">${escapeHtml(r.Setor)}</td>
-        <td class="px-4 py-4 text-on-surface-variant whitespace-nowrap">${escapeHtml(r.DataGeracao)}</td>
-        <td class="px-4 py-4 whitespace-nowrap">
+        <td class="px-4 py-3"><span class="font-semibold block">${escapeHtml(r.Nome)}</span><span class="modern-subtitle">CPF ${escapeHtml(formatCpf(r.CPF || ''))}</span></td>
+        <td class="px-4 py-3">${escapeHtml(r.Cargo)}</td>
+        <td class="px-4 py-3">${escapeHtml(r.Setor)}</td>
+        <td class="px-4 py-3 text-on-surface-variant whitespace-nowrap">${escapeHtml(r.DataGeracao)}</td>
+        <td class="px-4 py-3 whitespace-nowrap">
           <div class="flex flex-nowrap items-center justify-end gap-0.5">
             ${btnAcao({ onclick: `baixar(${r.ID})`, title: 'Baixar', icon: 'download' })}
             ${btnAcao({ onclick: `baixarFicha(${r.ID})`, title: 'Baixar ficha clínica', icon: 'clinical_notes' })}
@@ -80,7 +88,7 @@ async function carregarHistorico(busca = buscaHistoricoAtual) {
       </tr>`).join('');
     document.getElementById('paginacao-historico').innerHTML = htmlPaginacao(paginaHistorico, rows.length, ITENS_POR_PAGINA, 'irPaginaHistorico');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-error">${escapeHtml(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-3 text-error">${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -128,7 +136,7 @@ async function regerar(id) {
 }
 
 async function excluirRegistro(id) {
-  if (!confirmarExclusao('Excluir este ASO do histórico?')) return;
+  if (!await confirmarExclusao('Excluir este ASO do histórico?')) return;
   try {
     const resultado = await api(`historico/${id}`, { method: 'DELETE' });
     toast(resultado.controleRestaurado

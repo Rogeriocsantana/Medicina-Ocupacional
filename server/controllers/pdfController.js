@@ -3,7 +3,35 @@ const customParseFormat = require('dayjs/plugin/customParseFormat');
 dayjs.extend(customParseFormat);
 const db = require('../services/mysqlService');
 const pdfService = require('../services/pdfService');
+const registrosService = require('../services/registrosOcupacionaisService');
 const { formatCpf, isValidCpf, onlyDigits } = require('../utils/cpf');
+
+function normalizarTipoDocumento(tipoExame) {
+  const tipo = String(tipoExame || '').toLowerCase();
+  return tipo === 'demissional' || tipo.startsWith('demissional_') ? 'demissional' : tipoExame;
+}
+
+function normalizarTipoRegra(tipoExame) {
+  return String(tipoExame || '').toLowerCase() === 'demissional'
+    ? 'demissional_colaborador'
+    : tipoExame;
+}
+
+function tiposParaDocumento(tipos) {
+  const saida = [];
+  let incluiuDemissional = false;
+  for (const tipo of tipos) {
+    if (normalizarTipoDocumento(tipo.Chave) === 'demissional') {
+      if (!incluiuDemissional) {
+        saida.push({ ...tipo, Chave: 'demissional', Nome: 'Demissional' });
+        incluiuDemissional = true;
+      }
+    } else {
+      saida.push(tipo);
+    }
+  }
+  return saida;
+}
 
 async function montarRiscosDoCargo(cargoId, setorId = null) {
   const [riscoIds, todosRiscos] = await Promise.all([
@@ -135,17 +163,20 @@ async function montarContextoPdf(registroLike, extras = {}) {
   const empresaId = registroLike.EmpresaID || registroLike.empresaId;
 
   const tipoAtual = registroLike.TipoExame || registroLike.tipoExame || 'admissional';
+  const tipoRegra = normalizarTipoRegra(tipoAtual);
   const [configBase, tiposExameRaw, examesComplementares, riscos, setor, cargo, empresa, perguntasAdmissionais] = await Promise.all([
     db.getConfig(),
     db.getTiposExame(),
-    montarExamesDoCargo(cargoId, setorId, tipoAtual),
+    montarExamesDoCargo(cargoId, setorId, tipoRegra),
     montarRiscosDoCargo(cargoId, setorId),
     setorId ? db.getById('Setores', setorId) : null,
     cargoId ? db.getById('Cargos', cargoId) : null,
     empresaId ? db.getById('Empresas', empresaId) : null,
     listarPerguntasAdmissionais()
   ]);
-  const tiposExame = tiposExameRaw.filter(tipo => Number(tipo.SelecionavelASO) !== 0);
+  const tiposExame = tiposParaDocumento(
+    tiposExameRaw.filter(tipo => Number(tipo.SelecionavelASO) !== 0)
+  );
   const config = { ...configBase, ...(empresa || {}) };
 
   const examesDatas = extras.examesDatas !== undefined
@@ -167,7 +198,7 @@ async function montarContextoPdf(registroLike, extras = {}) {
       dataNascimento: registroLike.DataNascimento || registroLike.dataNascimento,
       setorNome: (setor && setor.Nome) || registroLike.Setor || registroLike.setorNome || '',
       cargoNome: (cargo && cargo.Nome) || registroLike.Cargo || registroLike.cargoNome || '',
-      tipoExame: tipoAtual
+      tipoExame: normalizarTipoDocumento(tipoAtual)
     },
     riscos,
     config,
@@ -230,33 +261,6 @@ function parseControleAnterior(raw) {
   try { return JSON.parse(String(raw)); } catch (_) { return null; }
 }
 
-async function prepararAtualizacaoControle(cpf, tipoExame, dataAvaliacaoClinica, dataEmissao) {
-  if (String(tipoExame || '').toLowerCase() === 'demissional') return null;
-  const funcionarios = await db.getAll('Funcionarios');
-  const funcionario = funcionarios.find(item => onlyDigits(item.CPF) === onlyDigits(cpf));
-  if (!funcionario) return null;
-  const ultimoExame = toInputDate(dataAvaliacaoClinica) || dayjs(dataEmissao).format('YYYY-MM-DD');
-  const vencimento = dayjs(ultimoExame).add(12, 'month').format('YYYY-MM-DD');
-  return {
-    funcionario,
-    anterior: {
-      DataAdmissao: toInputDate(funcionario.DataAdmissao) || null,
-      UltimoExame: toInputDate(funcionario.UltimoExame) || null,
-      Vencimento: toInputDate(funcionario.Vencimento) || null
-    },
-    novo: {
-      UltimoExame: ultimoExame,
-      Vencimento: vencimento,
-      Status: statusPorVencimento(vencimento)
-    }
-  };
-}
-
-async function aplicarAtualizacaoControle(controle) {
-  if (!controle) return;
-  await db.update('Funcionarios', controle.funcionario.ID, controle.novo);
-}
-
 function serializarHistorico(registro) {
   if (!registro) return null;
   const { __rowNumber, DocumentoSnapshot, ControleFuncionarioAnterior, ...rest } = registro;
@@ -277,7 +281,7 @@ function serializarHistorico(registro) {
 async function validarFormularioAso(body) {
   const {
     nome, cpf, dataNascimento, setorId, cargoId, empresaId, tipoExame,
-    conclusao, examesDatas, dataAvaliacaoClinica
+    conclusao, examesDatas
   } = body;
 
   if (!nome || !cpf || !dataNascimento || !setorId || !cargoId || !empresaId) {
@@ -320,7 +324,7 @@ async function validarFormularioAso(body) {
       Empresa: empresa.RazaoSocial,
       Conclusao: conclusao || '',
       ExamesDatas: JSON.stringify(examesNorm),
-      DataAvaliacaoClinica: dataAvaliacaoClinica || ''
+      DataAvaliacaoClinica: ''
     },
     examesNorm,
     riscosAtuais
@@ -349,6 +353,9 @@ module.exports = {
 
       const registro = await db.update('HistoricoPDF', req.params.id, {
         ...validado.dadosColaborador,
+        // Preserva os dados da emissão antiga. A nova emissão sairá sem data,
+        // mas o download histórico deve continuar exatamente como foi criado.
+        DataAvaliacaoClinica: existente.DataAvaliacaoClinica || '',
         RiscosSnapshot: existente.RiscosSnapshot || serializarRiscosSnapshot(validado.riscosAtuais)
       });
       if (!registro) return res.status(404).json({ erro: 'Falha ao atualizar o histórico.' });
@@ -373,25 +380,22 @@ module.exports = {
       const ctx = await montarContextoPdf(validado.dadosColaborador, {
         conclusao: validado.dadosColaborador.Conclusao,
         examesDatas: validado.examesNorm,
-        dataAvaliacaoClinica: validado.dadosColaborador.DataAvaliacaoClinica
+        dataAvaliacaoClinica: ''
       });
 
       const buffer = await pdfService.gerarAsoPdf({ ...ctx, dataDocumento });
-      const controle = await prepararAtualizacaoControle(
-        validado.dadosColaborador.CPF,
-        validado.dadosColaborador.TipoExame,
-        validado.dadosColaborador.DataAvaliacaoClinica,
-        dataDocumento
+      const funcionarios = await db.getAll('Funcionarios');
+      const funcionario = funcionarios.find(item =>
+        onlyDigits(item.CPF) === onlyDigits(validado.dadosColaborador.CPF)
       );
       const registro = await db.insert('HistoricoPDF', {
         ...validado.dadosColaborador,
-        FuncionarioID: controle?.funcionario.ID || null,
+        FuncionarioID: funcionario?.ID || null,
         DataGeracao: dayjs(dataDocumento).format('DD/MM/YYYY HH:mm'),
         RiscosSnapshot: serializarRiscosSnapshot(validado.riscosAtuais),
         DocumentoSnapshot: serializarDocumentoSnapshot(ctx, dataDocumento),
-        ControleFuncionarioAnterior: controle ? JSON.stringify(controle.anterior) : null
+        ControleFuncionarioAnterior: null
       });
-      await aplicarAtualizacaoControle(controle);
       const arquivoNome = pdfService.nomeArquivoAso(registro.Nome, dataDocumento);
       res.set('X-Historico-ID', String(registro.ID));
       enviarPdf(res, buffer, arquivoNome);
@@ -484,21 +488,20 @@ module.exports = {
       } : registro;
 
       const dataGeracao = new Date();
-      const ctx = await montarContextoPdf(dadosAtuais);
-      const buffer = await pdfService.gerarAsoPdf({ ...ctx, dataDocumento: dataGeracao });
-      const controle = await prepararAtualizacaoControle(
-        dadosAtuais.CPF,
-        registro.TipoExame,
-        registro.DataAvaliacaoClinica,
-        dataGeracao
+      const tipoNovaEmissao = normalizarTipoRegra(registro.TipoExame);
+      const ctx = await montarContextoPdf(
+        { ...dadosAtuais, TipoExame: tipoNovaEmissao },
+        { dataAvaliacaoClinica: '' }
       );
+      const buffer = await pdfService.gerarAsoPdf({ ...ctx, dataDocumento: dataGeracao });
 
       const idsPermitidos = new Set(ctx.examesComplementares.map(exame => String(exame.ID)));
       const examesDatas = Object.fromEntries(
         Object.entries(ctx.examesDatas || {}).filter(([id]) => idsPermitidos.has(String(id)))
       );
       const novoRegistro = await db.insert('HistoricoPDF', {
-        FuncionarioID: controle?.funcionario.ID || funcionarioAtual?.ID || null,
+        FuncionarioID: funcionarioAtual?.ID || null,
+        ExameRealizadoID: null,
         Nome: dadosAtuais.Nome,
         CPF: dadosAtuais.CPF,
         DataNascimento: dadosAtuais.DataNascimento,
@@ -506,19 +509,18 @@ module.exports = {
         Cargo: ctx.cargoAtual ? ctx.cargoAtual.Nome : registro.Cargo,
         Setor: ctx.setorAtual ? ctx.setorAtual.Nome : registro.Setor,
         ArquivoPDF: '',
-        TipoExame: registro.TipoExame,
+        TipoExame: tipoNovaEmissao,
         CargoID: dadosAtuais.CargoID,
         SetorID: dadosAtuais.SetorID,
         EmpresaID: dadosAtuais.EmpresaID,
         Empresa: ctx.empresaAtual ? ctx.empresaAtual.RazaoSocial : registro.Empresa,
         Conclusao: registro.Conclusao || '',
         ExamesDatas: JSON.stringify(examesDatas),
-        DataAvaliacaoClinica: registro.DataAvaliacaoClinica || '',
+        DataAvaliacaoClinica: '',
         RiscosSnapshot: serializarRiscosSnapshot(ctx.riscos),
         DocumentoSnapshot: serializarDocumentoSnapshot({ ...ctx, examesDatas }, dataGeracao),
-        ControleFuncionarioAnterior: controle ? JSON.stringify(controle.anterior) : null
+        ControleFuncionarioAnterior: null
       });
-      await aplicarAtualizacaoControle(controle);
 
       const arquivoNome = pdfService.nomeArquivoAso(dadosAtuais.Nome, dataGeracao);
       res.set('X-Historico-ID', String(novoRegistro.ID));
@@ -538,9 +540,13 @@ module.exports = {
         );
         if (!registros.length) return null;
         const registro = registros[0];
+        if (registro.exame_realizado_id && registro.funcionario_id) {
+          const [links] = await connection.query('SELECT COUNT(*) total FROM historico_aso WHERE exame_realizado_id=? AND id<>?', [registro.exame_realizado_id, registro.id]);
+          if (!Number(links[0].total)) await connection.query('UPDATE exames_realizados SET ativo=0,historico_aso_id=NULL WHERE id=?', [registro.exame_realizado_id]);
+        }
         const [maisRecentes] = await connection.query(
           `SELECT id FROM historico_aso
-            WHERE cpf = ? AND LOWER(tipo_exame) <> 'demissional'
+            WHERE cpf = ? AND LOWER(tipo_exame) NOT LIKE 'demissional%'
             ORDER BY id DESC LIMIT 1`,
           [registro.cpf]
         );
@@ -562,6 +568,7 @@ module.exports = {
             ]
           );
         }
+        if (registro.funcionario_id) await registrosService.recalcularFuncionario(connection, registro.funcionario_id);
         return { restaurado: Boolean(anterior) };
       });
       if (!resultado) return res.status(404).json({ erro: 'Registro não encontrado.' });

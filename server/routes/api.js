@@ -11,6 +11,10 @@ const funcionariosController = require('../controllers/funcionariosController');
 const importacaoFuncionariosController = require('../controllers/importacaoFuncionariosController');
 const backupController = require('../controllers/backupController');
 const perguntasAnamneseController = require('../controllers/perguntasAnamneseController');
+const registrosOcupacionaisController = require('../controllers/registrosOcupacionaisController');
+const relatoriosController = require('../controllers/relatoriosController');
+const condicoesPresencaController = require('../controllers/condicoesPresencaController');
+const importacaoCadastrosController = require('../controllers/importacaoCadastrosController');
 
 const setoresCtrl = makeCrudController('Setores', ['Nome']);
 const cargosCtrl = makeCrudController('Cargos', ['Nome']);
@@ -28,6 +32,13 @@ router.post('/cargos', cargosCtrl.criar);
 router.put('/cargos/:id', cargosCtrl.atualizar);
 router.delete('/cargos/:id', cargosCtrl.remover);
 
+router.get('/importacoes/cadastros/:tipo/modelo', importacaoCadastrosController.modelo);
+router.post(
+  '/importacoes/cadastros/:tipo',
+  express.raw({ type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/octet-stream'], limit: '10mb' }),
+  importacaoCadastrosController.importar
+);
+
 router.get('/riscos', riscosCtrl.listar);
 router.get('/riscos/:id', riscosCtrl.obter);
 router.post('/riscos', riscosCtrl.criar);
@@ -41,6 +52,7 @@ router.put('/funcionarios/:id', funcionariosController.atualizar);
 router.delete('/funcionarios/:id', funcionariosController.remover);
 
 router.get('/importacoes/funcionarios', importacaoFuncionariosController.listar);
+router.get('/importacoes/funcionarios/modelo', importacaoFuncionariosController.baixarModelo);
 router.post(
   '/importacoes/funcionarios',
   express.raw({ type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/octet-stream'], limit: '25mb' }),
@@ -82,6 +94,27 @@ router.get('/historico/:id', pdfController.obterHistorico);
 router.delete('/historico/:id', pdfController.excluir);
 
 router.get('/dashboard/stats', dashboardController.stats);
+router.get('/indicadores', dashboardController.indicadores);
+router.get('/relatorios/atestados', relatoriosController.resumo);
+router.get('/relatorios/atestados/pdf', relatoriosController.pdf);
+
+router.get('/condicoes', condicoesPresencaController.listarCondicoes);
+router.post('/condicoes', condicoesPresencaController.salvarCondicao);
+router.put('/condicoes/:id', condicoesPresencaController.salvarCondicao);
+router.post('/condicoes/:id/encerrar', condicoesPresencaController.encerrarCondicao);
+router.delete('/condicoes/:id', condicoesPresencaController.excluirCondicao);
+router.get('/presencas-medicas', condicoesPresencaController.listarPresencas);
+router.post('/presencas-medicas', condicoesPresencaController.salvarPresenca);
+router.put('/presencas-medicas/:id', condicoesPresencaController.salvarPresenca);
+router.delete('/presencas-medicas/:id', condicoesPresencaController.excluirPresenca);
+
+router.get('/registros/:tipo/modelo', registrosOcupacionaisController.modelo);
+router.post('/registros/:tipo/analisar', express.raw({ type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/octet-stream'], limit: '25mb' }), registrosOcupacionaisController.analisar);
+router.post('/registros/:tipo/importar', registrosOcupacionaisController.importar);
+router.get('/registros/:tipo', registrosOcupacionaisController.listar);
+router.post('/registros/:tipo', registrosOcupacionaisController.criar);
+router.put('/registros/:tipo/:id', registrosOcupacionaisController.atualizar);
+router.delete('/registros/:tipo/:id', registrosOcupacionaisController.excluir);
 
 router.get('/config', configController.obterConfig);
 router.put('/config', configController.salvarConfig);

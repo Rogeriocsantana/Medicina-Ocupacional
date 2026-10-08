@@ -9,3 +9,17 @@ tmp/
 *.sql.gz
 npm-debug.log
 .env
+.env.*
+!.env.example
+backups/
+outputs/
+database/data/
+# Script operacional vinculado a dados pessoais locais; não faz parte da release.
+server/preencher-codigos-funcionarios.js
+*.xlsx
+*.xls
+*.csv
+*.pdf
+*.log
+*.pem
+*.key

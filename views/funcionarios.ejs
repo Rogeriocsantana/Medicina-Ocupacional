@@ -2,18 +2,16 @@
 <%- include('partials/head', {pageTitle}) %>
 <%- include('partials/nav', {pageTitle, active: 'funcionarios'}) %>
 
-<div class="flex flex-wrap justify-between items-end gap-4 mb-5">
+<div class="approved-page-header">
   <div>
-    <h3 class="modern-title text-on-surface">Cadastro de funcionários</h3>
-    <p class="modern-subtitle mt-1"><span id="total-funcionarios-cabecalho">801</span> colaboradores cadastrados nas empresas do grupo.</p>
+    <h3 class="approved-page-title">Gerencie os cadastros dos funcionários</h3>
+    <p class="approved-page-subtitle">Cadastros, situação ocupacional e vencimentos de exames.</p>
   </div>
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:w-auto">
-    <a href="<%= baseUrl('importar-funcionarios') %>" class="modern-control !h-11 w-full sm:w-60 text-primary px-4 font-semibold flex items-center justify-center gap-2 whitespace-nowrap hover:opacity-90 transition-opacity">
-      <span data-ui-icon="upload"></span> Importar planilha
-    </a>
-    <button class="modern-primary h-11 w-full sm:w-60 px-4 font-semibold flex items-center justify-center gap-2 whitespace-nowrap hover:opacity-90 transition-opacity" onclick="abrirModal()">
-      <span data-ui-icon="userPlus"></span> Novo funcionário
-    </button>
+  <div class="approved-header-actions">
+    <button id="btn-sem-codigo" type="button" class="approved-button" title="Filtrar funcionários ativos sem código (exceto Só Nutri)" aria-label="Filtrar funcionários sem código" aria-pressed="false" onclick="alternarSemCodigo()"><span data-ui-icon="users"></span></button>
+    <a href="<%= baseUrl('api/importacoes/funcionarios/modelo') %>" download class="approved-button"><span data-ui-icon="download"></span>Baixar modelo</a>
+    <a href="<%= baseUrl('importar-funcionarios') %>" class="approved-button"><span data-ui-icon="upload"></span>Importar planilha</a>
+    <button class="approved-button primary" type="button" onclick="abrirModal()"><span data-ui-icon="userPlus"></span>Novo funcionário</button>
   </div>
 </div>
 
@@ -27,17 +25,17 @@
   <button id="aba-atrasados" class="modern-tab whitespace-nowrap" onclick="aplicarAbaFuncionarios('atrasados')">Exames atrasados <span id="contagem-atrasados" class="modern-count">-</span></button>
 </div>
 
-<div class="mb-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(20rem,1fr)_repeat(4,minmax(10rem,13rem))] gap-3 items-center">
-  <div class="relative w-full md:col-span-2 xl:col-span-1">
+<div class="mb-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(14rem,.7fr)_repeat(4,minmax(10.5rem,1fr))] gap-2 items-center">
+  <div class="approved-search relative w-full md:col-span-2 xl:col-span-1">
     <span data-ui-icon="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"></span>
-    <input id="busca" type="text" placeholder="Buscar nome, CPF, cargo ou setor..." class="modern-control w-full pl-10 pr-4 focus:ring-2 focus:ring-primary text-body-md">
+    <input id="busca" type="text" placeholder="Buscar por nome, CPF, matrícula ou cargo" class="approved-input w-full pl-10 pr-4 focus:ring-2 focus:ring-primary text-body-md">
   </div>
-  <select id="filtro-empresa" aria-label="Filtrar por empresa" class="modern-control w-full px-4 focus:ring-2 focus:ring-primary text-body-md"><option value="">Empresa: Todas</option></select>
-  <select id="filtro-setor" aria-label="Filtrar por setor" class="modern-control w-full px-4 focus:ring-2 focus:ring-primary text-body-md"><option value="">Setor: Todos</option></select>
-  <select id="filtro-status" aria-label="Filtrar por status" class="modern-control w-full px-4 focus:ring-2 focus:ring-primary text-body-md">
+  <select id="filtro-empresa" aria-label="Filtrar por empresa" class="approved-input w-full px-4 focus:ring-2 focus:ring-primary text-body-md"><option value="">Empresa: Todas</option></select>
+  <select id="filtro-setor" aria-label="Filtrar por setor" class="approved-input w-full px-4 focus:ring-2 focus:ring-primary text-body-md"><option value="">Setor: Todos</option></select>
+  <select id="filtro-status" aria-label="Filtrar por status" class="approved-input w-full px-4 focus:ring-2 focus:ring-primary text-body-md">
     <option value="">Status: Todos</option>
   </select>
-  <select id="filtro-a-vencer" aria-label="Mostrar exames a vencer em até esta quantidade de dias" class="modern-control w-full px-4 focus:ring-2 focus:ring-inset focus:ring-primary text-body-md">
+  <select id="filtro-a-vencer" aria-label="Mostrar exames a vencer em até esta quantidade de dias" class="approved-input w-full px-4 focus:ring-2 focus:ring-inset focus:ring-primary text-body-md">
     <option value="">A vencer: Todos</option>
     <% for (let dias = 1; dias <= 60; dias += 1) { %>
       <option value="<%= dias %>" data-trigger-label="A vencer: <%= dias %> dia<%= dias === 1 ? '' : 's' %>">A vencer em até <%= dias %> dia<%= dias === 1 ? '' : 's' %></option>
@@ -45,8 +43,7 @@
   </select>
 </div>
 
-<div id="paginacao-funcionarios-topo"></div>
-<div class="modern-surface overflow-x-auto">
+<div class="approved-data-card overflow-x-auto">
   <table class="employee-table modern-table w-full min-w-[900px] table-fixed text-left border-collapse leading-5">
     <colgroup>
       <col class="col-employee w-[22%]"><col class="col-company w-[20%]"><col class="col-sector w-[27%]"><col class="col-due w-[12%]"><col class="col-status w-[12%]"><col class="col-actions w-[7%]">
@@ -65,6 +62,7 @@
       <tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
     </tbody>
   </table>
+  <div id="paginacao-funcionarios" class="px-4"></div>
 </div>
 
 <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
@@ -82,14 +80,18 @@
           <option value="">Carregando...</option>
         </select>
       </div>
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-body-md font-semibold mb-1">CPF</label>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+        <div class="min-w-0">
+          <label for="func-codigo" class="block text-body-md font-semibold mb-1">Código <span class="font-normal text-on-surface-variant">(opcional)</span></label>
+          <input id="func-codigo" inputmode="numeric" pattern="[0-9]{1,30}" maxlength="30" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+        </div>
+        <div class="min-w-0">
+          <label for="func-cpf" class="block text-body-md font-semibold mb-1">CPF</label>
           <input id="func-cpf" required placeholder="000.000.000-00" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
           <p id="func-cpf-erro" class="text-error text-body-md mt-1 hidden">CPF inválido.</p>
         </div>
         <div>
-          <label class="block text-body-md font-semibold mb-1">Data de nascimento</label>
+          <label for="func-nascimento" class="block text-body-md font-semibold mb-1">Data de nascimento</label>
           <input id="func-nascimento" type="date" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
         </div>
       </div>
@@ -102,11 +104,11 @@
           <label class="block text-body-md font-semibold mb-1">Situação</label>
           <select id="func-situacao" required class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
             <option value="ATIVO">ATIVO</option>
-            <option value="AFASTADO">AFASTADO</option>
             <option value="DESLIGADO">DESLIGADO</option>
           </select>
         </div>
       </div>
+      <label id="func-desligamento-wrap" class="hidden block text-body-md font-semibold mb-4">Data de desligamento<input id="func-desligamento" type="date" class="w-full px-4 py-2.5 mt-1 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary"></label>
       <div class="grid grid-cols-3 gap-4">
         <div>
           <label class="block text-body-md font-semibold mb-1">Admissão</label>
@@ -125,8 +127,9 @@
         <div>
           <label class="block text-body-md font-semibold mb-1">Condição</label>
           <select id="func-condicao" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
-            <option value="">SEM CONDIÇÃO</option><option>FÉRIAS</option><option>GESTANTE</option><option>PUERPÉRIO</option><option>LICENÇA MÉDICA</option><option>OUTRA</option>
+            <option value="">SEM CONDIÇÃO</option><option>FÉRIAS</option><option>GESTANTE</option><option>PUERPÉRIO</option><option>LICENÇA MÉDICA</option><option>AFASTADO</option><option>OUTRA</option>
           </select>
+          <input id="func-condicao-inicio" type="hidden"><input id="func-condicao-fim" type="hidden">
         </div>
         <div>
           <label class="block text-body-md font-semibold mb-1">Observação</label>
@@ -155,12 +158,23 @@
   </div>
 </div>
 
+<div id="modal-condicao-funcionario" class="fixed inset-0 z-[60] hidden items-center justify-center modal-backdrop p-4">
+  <div class="modern-surface w-full max-w-lg p-6">
+    <h3 id="func-condicao-modal-titulo" class="text-xl font-semibold mb-2"></h3>
+    <p id="func-condicao-modal-texto" class="text-on-surface-variant mb-4"></p>
+    <label class="block font-semibold"> <span id="func-condicao-modal-label"></span>
+      <input id="func-condicao-modal-data" type="date" class="modern-control w-full px-4 mt-2" required>
+    </label>
+    <div class="flex justify-end gap-2 mt-6"><button type="button" class="approved-button" onclick="fecharModalCondicao(false)">Cancelar</button><button type="button" class="approved-button primary" onclick="fecharModalCondicao(true)">Confirmar</button></div>
+  </div>
+</div>
+
 <script>
 let setoresCache = [];
 let cargosCache = [];
 let empresasCache = [];
 let paginaFuncionarios = 1;
-const ITENS_POR_PAGINA = 5;
+const ITENS_POR_PAGINA = 6;
 let buscaFuncionariosAtual = '';
 let filtroStatusAtual = '';
 let filtroSituacaoAtual = '';
@@ -198,11 +212,14 @@ async function carregarSelectsModal() {
   document.getElementById('filtro-setor').innerHTML = '<option value="">Setor: Todos</option>' + setoresCache.map(s => `<option value="${s.ID}">${escapeHtml(s.Nome)}</option>`).join('');
 }
 
+let filtroSemCodigo = false;
+function alternarSemCodigo() { filtroSemCodigo = !filtroSemCodigo; paginaFuncionarios = 1; const b = document.getElementById('btn-sem-codigo'); b.setAttribute('aria-pressed', String(filtroSemCodigo)); b.classList.toggle('bg-primary-fixed', filtroSemCodigo); carregarFuncionarios(); }
 async function carregarFuncionarios(busca = buscaFuncionariosAtual) {
   buscaFuncionariosAtual = busca;
   const tbody = document.getElementById('tbody-funcionarios');
   try {
     const params = new URLSearchParams({ busca });
+    if (filtroSemCodigo) params.set('semCodigo', '1');
     if (filtroStatusAtual) params.set('status', filtroStatusAtual);
     if (filtroSituacaoAtual) params.set('situacao', filtroSituacaoAtual);
     if (filtroCondicaoAtual) params.set('condicao', filtroCondicaoAtual);
@@ -212,25 +229,28 @@ async function carregarFuncionarios(busca = buscaFuncionariosAtual) {
     const rows = await api(`funcionarios?${params.toString()}`);
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-on-surface-variant">Nenhum funcionário encontrado.</td></tr>';
-      document.getElementById('paginacao-funcionarios-topo').innerHTML = '';
+      document.getElementById('paginacao-funcionarios').innerHTML = '';
       return;
     }
+    paginaFuncionarios = Math.min(paginaFuncionarios, Math.ceil(rows.length / ITENS_POR_PAGINA));
     const pagina = rows.slice((paginaFuncionarios - 1) * ITENS_POR_PAGINA, paginaFuncionarios * ITENS_POR_PAGINA);
     tbody.innerHTML = pagina.map(f => `
       <tr class="hover:bg-[#edf5ff] transition-colors group">
-        <td class="col-employee px-4 py-3"><span class="font-semibold block">${escapeHtml(f.Nome)}</span><span class="modern-subtitle">CPF ${escapeHtml(formatCpf(f.CPF))}</span></td>
+        <td class="col-employee px-4 py-3"><span class="font-semibold block">${escapeHtml(f.CodigoFuncionario ? f.CodigoFuncionario + ' - ' + f.Nome : f.Nome)}</span><span class="modern-subtitle">CPF ${escapeHtml(formatCpf(f.CPF))}</span></td>
         <td class="col-company px-4 py-3 break-words">${escapeHtml(f.EmpresaNome || '')}</td>
         <td class="col-sector px-4 py-3"><span class="block">${escapeHtml(f.SetorNome || '')}</span><span class="modern-subtitle">${escapeHtml(f.CargoNome || '')}</span></td>
         <td class="col-due px-4 py-3 whitespace-nowrap">${escapeHtml(formatDateBR(f.Vencimento)) || '—'}</td>
         <td class="col-status px-4 py-3"><span class="inline-block px-2 py-1 rounded-full text-[11px] leading-4 font-semibold ${f.Situacao !== 'ATIVO' || f.Condicao ? 'bg-violet-100 text-violet-800' : f.Status === 'ATRASADO' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${escapeHtml(f.Situacao !== 'ATIVO' ? f.Situacao : (f.Condicao || f.Status || ''))}</span></td>
         <td class="col-actions px-3 py-3 text-right">
           <div class="desktop-row-actions flex justify-end gap-0.5 opacity-70 group-hover:opacity-100">
+            <a href="${appUrl(`gerar-pdf?funcionarioId=${encodeURIComponent(f.ID)}`)}" class="p-1.5 text-primary hover:bg-primary-fixed rounded" title="Gerar ASO"><span data-ui-icon="fileText"></span></a>
             <button onclick='editar(${JSON.stringify(f).replace(/'/g, "&#39;")})' class="p-1.5 text-primary hover:bg-primary-fixed rounded" title="Editar"><span data-ui-icon="pencil"></span></button>
             <button onclick="excluir(${f.ID})" class="p-1.5 text-error hover:bg-error-container rounded" title="Excluir"><span data-ui-icon="trash"></span></button>
           </div>
           <div class="mobile-row-actions">
             <button type="button" onclick="alternarAcoesFuncionario(event, ${f.ID})" class="p-1.5 text-on-surface-variant rounded" aria-label="Ações de ${escapeHtml(f.Nome)}"><span data-ui-icon="moreVertical"></span></button>
             <div id="acoes-funcionario-${f.ID}" class="mobile-row-actions-menu hidden">
+              <a href="${appUrl(`gerar-pdf?funcionarioId=${encodeURIComponent(f.ID)}`)}" class="text-primary"><span data-ui-icon="fileText"></span>Gerar ASO</a>
               <button type="button" onclick='editar(${JSON.stringify(f).replace(/'/g, "&#39;")})' class="text-primary"><span data-ui-icon="pencil"></span>Editar</button>
               <button type="button" onclick="excluir(${f.ID})" class="text-error"><span data-ui-icon="trash"></span>Excluir</button>
             </div>
@@ -239,11 +259,11 @@ async function carregarFuncionarios(busca = buscaFuncionariosAtual) {
       </tr>`).join('');
     renderUiIcons(tbody);
     const htmlPagina = htmlPaginacao(paginaFuncionarios, rows.length, ITENS_POR_PAGINA, 'irPaginaFuncionarios');
-    document.getElementById('paginacao-funcionarios-topo').innerHTML = htmlPagina;
-    renderUiIcons(document.getElementById('paginacao-funcionarios-topo'));
+    document.getElementById('paginacao-funcionarios').innerHTML = htmlPagina;
+    renderUiIcons(document.getElementById('paginacao-funcionarios'));
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-error">${escapeHtml(err.message)}</td></tr>`;
-    document.getElementById('paginacao-funcionarios-topo').innerHTML = '';
+    document.getElementById('paginacao-funcionarios').innerHTML = '';
   }
 }
 function irPaginaFuncionarios(pagina) { if (pagina >= 1) { paginaFuncionarios = pagina; carregarFuncionarios(); } }
@@ -263,10 +283,46 @@ function abrirModal() {
   document.getElementById('modal-titulo').textContent = 'Adicionar Funcionário';
   document.getElementById('func-id').value = '';
   document.getElementById('form-funcionario').reset();
+  document.getElementById('func-condicao').dataset.anterior = '';
+  document.getElementById('func-condicao').dataset.confirmada = '';
+  document.getElementById('func-condicao-inicio').value = '';
+  document.getElementById('func-condicao-fim').value = '';
+  atualizarCampoDesligamento();
   document.getElementById('func-status').value = 'SEM VENCIMENTO';
   document.getElementById('func-cpf-erro').classList.add('hidden');
   document.getElementById('modal').classList.remove('hidden');
   document.getElementById('modal').classList.add('flex');
+}
+
+function atualizarCampoDesligamento(){
+  const desligado=document.getElementById('func-situacao').value==='DESLIGADO';
+  document.getElementById('func-desligamento-wrap').classList.toggle('hidden',!desligado);
+  document.getElementById('func-desligamento').required=desligado;
+}
+document.getElementById('func-situacao').addEventListener('change',atualizarCampoDesligamento);
+document.getElementById('func-condicao').addEventListener('change',()=>{
+  const campo=document.getElementById('func-condicao');
+  if(campo.dataset.restaurando==='1')return;
+  const valor=campo.value,original=campo.dataset.anterior||'';
+  if(valor===original){campo.dataset.confirmada=valor;document.getElementById('func-condicao-inicio').value='';document.getElementById('func-condicao-fim').value='';return}
+  const encerrando=!valor;
+  document.getElementById('func-condicao-modal-titulo').textContent=encerrando?'Finalizar condição':'Registrar início da condição';
+  document.getElementById('func-condicao-modal-texto').textContent=encerrando
+    ? `Informe a data de fim de ${original}. Ela será gravada em Registros > Condições e a condição será removida do cadastro ao salvar.`
+    : `Informe o início de ${valor}. A alteração será gravada em Registros > Condições ao salvar o funcionário.${original?' A condição anterior será encerrada no dia anterior.':''}`;
+  document.getElementById('func-condicao-modal-label').textContent=encerrando?'Data de fim':'Data de início';
+  document.getElementById('func-condicao-modal-data').value='';
+  const modal=document.getElementById('modal-condicao-funcionario');modal.classList.remove('hidden');modal.classList.add('flex');
+});
+function fecharModalCondicao(confirmado){
+  const campo=document.getElementById('func-condicao'),original=campo.dataset.anterior||'',data=document.getElementById('func-condicao-modal-data');
+  if(confirmado&&!data.value){data.reportValidity();return}
+  if(confirmado){
+    document.getElementById('func-condicao-inicio').value=campo.value?data.value:'';
+    document.getElementById('func-condicao-fim').value=campo.value?'':original?data.value:'';
+    campo.dataset.confirmada=campo.value;
+  }else {campo.value=campo.dataset.confirmada||'';campo.dataset.restaurando='1';campo.dispatchEvent(new Event('change',{bubbles:false}));delete campo.dataset.restaurando;}
+  const modal=document.getElementById('modal-condicao-funcionario');modal.classList.add('hidden');modal.classList.remove('flex');
 }
 
 function fecharModal() {
@@ -278,10 +334,11 @@ function fecharModal() {
   document.getElementById('modal').classList.remove('flex');
 }
 
-function editar(func) {
+async function editar(func) {
   document.getElementById('modal-titulo').textContent = 'Editar Funcionário';
   document.getElementById('func-id').value = func.ID;
   document.getElementById('func-nome').value = func.Nome || '';
+  document.getElementById('func-codigo').value = func.CodigoFuncionario || '';
   document.getElementById('func-cpf').value = formatCpf(func.CPF || '');
   document.getElementById('func-nascimento').value = func.DataNascimento || '';
   document.getElementById('func-empresa').value = func.EmpresaID || '';
@@ -293,8 +350,14 @@ function editar(func) {
   document.getElementById('func-vencimento').value = func.Vencimento || '';
   document.getElementById('func-observacao-condicao').value = func.ObservacaoCondicao || '';
   document.getElementById('func-condicao').value = func.Condicao || '';
+  document.getElementById('func-condicao-inicio').value = '';
+  document.getElementById('func-condicao-fim').value = '';
+  document.getElementById('func-condicao').dataset.anterior = func.Condicao || '';
+  document.getElementById('func-condicao').dataset.confirmada = func.Condicao || '';
   atualizarStatusFormulario();
   document.getElementById('func-situacao').value = func.Situacao || 'ATIVO';
+  document.getElementById('func-desligamento').value = func.DataDesligamento || '';
+  atualizarCampoDesligamento();
   document.getElementById('func-cpf-erro').classList.add('hidden');
   document.getElementById('modal').classList.remove('hidden');
   document.getElementById('modal').classList.add('flex');
@@ -313,6 +376,7 @@ document.getElementById('form-funcionario').addEventListener('submit', async (e)
 
   const payload = {
     Nome: document.getElementById('func-nome').value.trim(),
+    CodigoFuncionario: document.getElementById('func-codigo').value.trim(),
     CPF: cpfEl.value,
     DataNascimento: document.getElementById('func-nascimento').value,
     EmpresaID: document.getElementById('func-empresa').value,
@@ -323,7 +387,10 @@ document.getElementById('form-funcionario').addEventListener('submit', async (e)
     Vencimento: document.getElementById('func-vencimento').value,
     ObservacaoCondicao: document.getElementById('func-observacao-condicao').value.trim(),
     Condicao: document.getElementById('func-condicao').value,
-    Situacao: document.getElementById('func-situacao').value
+    CondicaoInicio: document.getElementById('func-condicao-inicio').value,
+    CondicaoFim: document.getElementById('func-condicao-fim').value,
+    Situacao: document.getElementById('func-situacao').value,
+    DataDesligamento: document.getElementById('func-desligamento').value
   };
 
   const id = document.getElementById('func-id').value;
@@ -347,7 +414,7 @@ document.getElementById('form-funcionario').addEventListener('submit', async (e)
 });
 
 async function excluir(id) {
-  if (!confirmarExclusao('Excluir este funcionário?')) return;
+  if (!await confirmarExclusao('Excluir este funcionário?')) return;
   try {
     await api(`funcionarios/${id}`, { method: 'DELETE' });
     toast('Funcionário excluído.');
@@ -441,14 +508,15 @@ document.getElementById('func-vencimento').addEventListener('change', atualizarS
 async function carregarOpcoesStatus() {
   const funcionarios = await api('funcionarios');
   const ativos = funcionarios.filter(f => String(f.Situacao || '').toUpperCase() === 'ATIVO').length;
-  const afastados = funcionarios.filter(f => String(f.Situacao || '').toUpperCase() === 'AFASTADO').length;
+  const afastados = funcionarios.filter(f => String(f.Situacao || '').toUpperCase() === 'ATIVO' && String(f.Condicao || '').toUpperCase() === 'AFASTADO').length;
   const contagensCondicao = {
     gestantes: funcionarios.filter(f => String(f.Condicao || '').toUpperCase() === 'GESTANTE').length,
     puerperio: funcionarios.filter(f => String(f.Condicao || '').toUpperCase() === 'PUERPÉRIO').length,
     'licenca-medica': funcionarios.filter(f => String(f.Condicao || '').toUpperCase() === 'LICENÇA MÉDICA').length
   };
   const atrasados = funcionarios.filter(f => f.AtrasoRelevante).length;
-  document.getElementById('total-funcionarios-cabecalho').textContent = funcionarios.length;
+  const totalCabecalho = document.getElementById('total-funcionarios-cabecalho');
+  if (totalCabecalho) totalCabecalho.textContent = funcionarios.length;
   document.getElementById('contagem-todos').textContent = funcionarios.length;
   document.getElementById('contagem-ativos').textContent = ativos;
   document.getElementById('contagem-afastados').textContent = afastados;
@@ -466,7 +534,7 @@ function aplicarAbaFuncionarios(aba) {
   const filtros = {
     todos: ['', '', ''],
     ativos: ['', 'ATIVO', ''],
-    afastados: ['', 'AFASTADO', ''],
+    afastados: ['ATIVO', '', 'AFASTADO'],
     gestantes: ['', '', 'GESTANTE'],
     puerperio: ['', '', 'PUERPÉRIO'],
     'licenca-medica': ['', '', 'LICENÇA MÉDICA'],

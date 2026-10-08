@@ -1,35 +1,39 @@
-<% const pageTitle = 'Cadastro de Riscos'; %>
+<% const pageTitle = 'Riscos'; %>
 <%- include('partials/head', {pageTitle}) %>
 <%- include('partials/nav', {pageTitle, active: 'riscos'}) %>
 
-<div class="mb-stack-lg">
-  <div class="flex flex-wrap items-end justify-between gap-4">
+<div class="mb-5">
+  <div class="approved-page-header">
     <div>
-      <h3 class="font-headline-lg text-headline-lg text-on-surface">Riscos ocupacionais</h3>
-      <p class="text-on-surface-variant font-body-md text-body-md mt-1">Cadastre os riscos e organize seus grupos de classificação.</p>
+      <h3 class="approved-page-title">Identifique os riscos ocupacionais</h3>
+      <p class="approved-page-subtitle">Cadastre os riscos e organize seus grupos de classificação.</p>
     </div>
-    <button id="botao-adicionar-risco" class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm" onclick="abrirModalRisco()">
-      <span class="material-symbols-outlined">add</span> Adicionar risco
-    </button>
+    <div class="approved-header-actions">
+      <a class="approved-button" href="<%= baseUrl('api/importacoes/cadastros/riscos/modelo') %>" download><span data-ui-icon="download"></span>Baixar modelo</a>
+      <button class="approved-button" type="button" onclick="document.getElementById('arquivo-riscos').click()"><span data-ui-icon="upload"></span>Importar planilha</button>
+      <button id="botao-adicionar-risco" class="approved-button primary" onclick="abrirModalRisco()"><span class="material-symbols-outlined">add</span>Adicionar risco</button>
+      <button id="botao-adicionar-grupo" class="approved-button primary hidden" onclick="abrirModalGrupo()"><span class="material-symbols-outlined">add</span>Adicionar grupo</button>
+      <input id="arquivo-riscos" class="approved-import-input" type="file" accept=".xlsx">
+    </div>
   </div>
-  <div class="inline-flex flex-wrap mt-5 bg-surface-container p-1 rounded-xl border border-border-subtle gap-1">
-    <button onclick="mostrarAbaRiscos('riscos')" data-aba-risco="riscos" class="aba-riscos px-4 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md">Riscos</button>
-    <button onclick="mostrarAbaRiscos('grupos')" data-aba-risco="grupos" class="aba-riscos px-4 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md">Grupos de risco</button>
+  <div class="modern-tabs line-tabs mt-5">
+    <button onclick="mostrarAbaRiscos('riscos')" data-aba-risco="riscos" class="aba-riscos modern-tab active">Riscos</button>
+    <button onclick="mostrarAbaRiscos('grupos')" data-aba-risco="grupos" class="aba-riscos modern-tab">Grupos de risco</button>
   </div>
 </div>
 
 <section id="painel-riscos" class="painel-riscos">
-  <div id="paginacao-riscos"></div>
-  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+  <div class="approved-data-card">
     <table class="w-full text-left border-collapse">
       <thead class="bg-background-main border-b border-border-subtle"><tr><th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">ID</th><th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Grupo</th><th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Fator de risco</th><th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Possíveis agravos</th><th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase text-right">Ações</th></tr></thead>
       <tbody id="tbody-riscos" class="divide-y divide-border-subtle font-table-data text-table-data"><tr><td colspan="5" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr></tbody>
     </table>
+    <div id="paginacao-riscos" class="px-4"></div>
   </div>
 </section>
 
 <section id="painel-grupos" class="painel-riscos hidden">
-  <div class="flex flex-wrap justify-between items-center gap-3 mb-4"><div><h4 class="font-headline-md">Grupos de risco</h4><p class="text-body-md text-on-surface-variant">Defina nome, cor e ordem dos grupos disponíveis no cadastro de riscos.</p></div><button onclick="abrirModalGrupo()" class="bg-primary text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2"><span class="material-symbols-outlined">add</span> Adicionar grupo</button></div>
+  <div class="mb-4"><h4 class="font-headline-md">Grupos de risco</h4><p class="text-body-md text-on-surface-variant">Defina nome, cor e ordem dos grupos disponíveis no cadastro de riscos.</p></div>
   <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden"><table class="w-full text-left"><thead class="bg-background-main border-b border-border-subtle"><tr><th class="px-6 py-4 text-label-caps uppercase">Cor</th><th class="px-6 py-4 text-label-caps uppercase">Nome</th><th class="px-6 py-4 text-label-caps uppercase">Ordem</th><th class="px-6 py-4 text-right text-label-caps uppercase">Ações</th></tr></thead><tbody id="tbody-grupos" class="font-table-data text-table-data"></tbody></table></div>
 </section>
 
@@ -39,22 +43,23 @@
 
 <style>.campo{width:100%;padding:.625rem .75rem;border:1px solid #DEE2E6;border-radius:.5rem}.campo:focus{outline:2px solid #00478d;outline-offset:1px}</style>
 <script>
-let paginaRiscos=1; const ITENS_POR_PAGINA=5; let gruposRisco=[]; let riscosAtuais=[];
-function mostrarAbaRiscos(aba){document.querySelectorAll('.painel-riscos').forEach(p=>p.classList.toggle('hidden',p.id!==`painel-${aba}`));document.querySelectorAll('.aba-riscos').forEach(b=>b.className=`aba-riscos px-4 py-2 rounded-lg text-body-md ${b.dataset.abaRisco===aba?'bg-surface text-primary font-bold shadow-sm':'text-on-surface-variant font-semibold'}`);document.getElementById('botao-adicionar-risco').classList.toggle('hidden',aba!=='riscos')}
+let paginaRiscos=1; const ITENS_POR_PAGINA=6; let gruposRisco=[]; let riscosAtuais=[];
+function mostrarAbaRiscos(aba){document.querySelectorAll('.painel-riscos').forEach(p=>p.classList.toggle('hidden',p.id!==`painel-${aba}`));document.querySelectorAll('.aba-riscos').forEach(b=>b.classList.toggle('active',b.dataset.abaRisco===aba));document.getElementById('botao-adicionar-risco').classList.toggle('hidden',aba!=='riscos');document.getElementById('botao-adicionar-grupo').classList.toggle('hidden',aba!=='grupos')}
 function atualizarSelectGrupos(){const select=document.getElementById('risco-grupo'),selecionado=select.value;select.innerHTML='<option value="">Selecione...</option>'+gruposRisco.map(g=>`<option value="${escapeHtml(g.Nome)}">${escapeHtml(g.Nome)}</option>`).join('');select.value=selecionado}
 function renderizarRiscos(){const tbody=document.getElementById('tbody-riscos'),cores=Object.fromEntries(gruposRisco.map(g=>[g.Nome,g.Cor]));if(!riscosAtuais.length){tbody.innerHTML='<tr><td colspan="5" class="px-6 py-4 text-on-surface-variant">Nenhum risco cadastrado.</td></tr>';document.getElementById('paginacao-riscos').innerHTML='';return}const pagina=riscosAtuais.slice((paginaRiscos-1)*ITENS_POR_PAGINA,paginaRiscos*ITENS_POR_PAGINA);tbody.innerHTML=pagina.map(r=>`<tr class="hover:bg-[#EBF2FA] transition-colors group"><td class="px-6 py-4 font-table-data text-table-data text-on-surface-variant">#${String(r.ID).padStart(3,'0')}</td><td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs font-bold text-white" style="background:${escapeHtml(cores[r.Grupo]||'#727783')}">${escapeHtml(r.Grupo)}</span></td><td class="px-6 py-4 text-body-md max-w-md">${escapeHtml(r.Descricao)}</td><td class="px-6 py-4 text-body-md text-on-surface-variant max-w-md">${escapeHtml(r.Agravos||'–')}</td><td class="px-6 py-4 text-right"><div class="flex justify-end gap-2 opacity-60 group-hover:opacity-100"><button onclick='editarRisco(${JSON.stringify(r).replace(/'/g,'&#39;')})' class="p-2 text-primary hover:bg-primary-fixed rounded" title="Editar"><span class="material-symbols-outlined">edit</span></button><button onclick="excluirRisco(${r.ID})" class="p-2 text-error hover:bg-error-container rounded" title="Excluir"><span class="material-symbols-outlined">delete</span></button></div></td></tr>`).join('');document.getElementById('paginacao-riscos').innerHTML=htmlPaginacao(paginaRiscos,riscosAtuais.length,ITENS_POR_PAGINA,'irPaginaRiscos')}
 async function carregarDados(){try{const [riscos,grupos]=await Promise.all([api('riscos'),api('grupos-risco')]);riscosAtuais=riscos;gruposRisco=grupos;atualizarSelectGrupos();renderizarRiscos();renderizarGrupos()}catch(err){document.getElementById('tbody-riscos').innerHTML=`<tr><td colspan="4" class="px-6 py-4 text-error">${escapeHtml(err.message)}</td></tr>`;toast(err.message,'erro')}}
+document.getElementById('arquivo-riscos').addEventListener('change',async e=>{const arquivo=e.target.files[0];if(!arquivo)return;try{const resposta=await fetch(apiUrl('importacoes/cadastros/riscos'),{method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:await arquivo.arrayBuffer()});const dados=await resposta.json();if(!resposta.ok)throw new Error(dados.erro||'Falha ao importar.');toast(`${dados.importados} risco(s) importado(s).${dados.ignorados?` ${dados.ignorados} já existente(s).`:''}`);await carregarDados()}catch(error){toast(error.message,'erro')}finally{e.target.value=''}});
 function irPaginaRiscos(p){if(p>=1){paginaRiscos=p;renderizarRiscos()}}
 function abrirModalRisco(){document.getElementById('modal-risco-titulo').textContent='Adicionar risco';document.getElementById('risco-id').value='';document.getElementById('risco-grupo').value='';document.getElementById('risco-descricao').value='';document.getElementById('risco-agravos').value='';document.getElementById('modal-risco').classList.replace('hidden','flex')}
 function fecharModalRisco(){document.getElementById('modal-risco').classList.replace('flex','hidden')}
 function editarRisco(r){document.getElementById('modal-risco-titulo').textContent='Editar risco';document.getElementById('risco-id').value=r.ID;document.getElementById('risco-grupo').value=r.Grupo;document.getElementById('risco-descricao').value=r.Descricao;document.getElementById('risco-agravos').value=r.Agravos||'';document.getElementById('modal-risco').classList.replace('hidden','flex')}
 document.getElementById('form-risco').addEventListener('submit',async e=>{e.preventDefault();const id=document.getElementById('risco-id').value,p={Grupo:document.getElementById('risco-grupo').value,Descricao:document.getElementById('risco-descricao').value.trim(),Agravos:document.getElementById('risco-agravos').value.trim()};if(!p.Grupo||!p.Descricao)return;try{await api(id?`riscos/${id}`:'riscos',{method:id?'PUT':'POST',body:JSON.stringify(p)});fecharModalRisco();toast(id?'Risco atualizado com sucesso.':'Risco adicionado com sucesso.');carregarDados()}catch(err){toast(err.message,'erro')}})
-async function excluirRisco(id){if(!confirmarExclusao('Excluir este risco? Ele será removido de todos os cargos relacionados.'))return;try{await api(`riscos/${id}`,{method:'DELETE'});toast('Risco excluído.');carregarDados()}catch(err){toast(err.message,'erro')}}
+async function excluirRisco(id){if(!await confirmarExclusao('Excluir este risco? Ele será removido de todos os cargos relacionados.'))return;try{await api(`riscos/${id}`,{method:'DELETE'});toast('Risco excluído.');carregarDados()}catch(err){toast(err.message,'erro')}}
 function renderizarGrupos(){document.getElementById('tbody-grupos').innerHTML=gruposRisco.map(g=>`<tr class="border-b border-border-subtle"><td class="px-6 py-3"><span class="inline-block w-5 h-5 rounded-full" style="background:${escapeHtml(g.Cor)}"></span></td><td class="px-6 py-3">${escapeHtml(g.Nome)}</td><td class="px-6 py-3">${escapeHtml(g.Ordem)}</td><td class="px-6 py-3 text-right"><button onclick='abrirModalGrupo(${JSON.stringify(g).replace(/'/g,'&#39;')})' class="p-2 text-primary hover:bg-primary-fixed rounded" title="Editar"><span class="material-symbols-outlined">edit</span></button><button onclick="excluirGrupo(${g.ID})" class="p-2 text-error hover:bg-error-container rounded" title="Excluir"><span class="material-symbols-outlined">delete</span></button></td></tr>`).join('')||'<tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Nenhum grupo cadastrado.</td></tr>'}
 function abrirModalGrupo(g){document.getElementById('modal-grupo').classList.replace('hidden','flex');document.getElementById('grupo-id').value=g?g.ID:'';document.getElementById('grupo-nome').value=g?g.Nome:'';document.getElementById('grupo-cor').value=g?g.Cor:'#1A73E8';document.getElementById('grupo-ordem').value=g?g.Ordem:1;document.getElementById('modal-grupo-titulo').textContent=g?'Editar grupo':'Novo grupo'}
 function fecharModalGrupo(){document.getElementById('modal-grupo').classList.replace('flex','hidden')}
 document.getElementById('form-grupo').addEventListener('submit',async e=>{e.preventDefault();const id=document.getElementById('grupo-id').value,p={Nome:document.getElementById('grupo-nome').value.trim(),Cor:document.getElementById('grupo-cor').value,Ordem:Number(document.getElementById('grupo-ordem').value)||1};try{await api(id?`grupos-risco/${id}`:'grupos-risco',{method:id?'PUT':'POST',body:JSON.stringify(p)});fecharModalGrupo();toast('Grupo salvo.');carregarDados()}catch(err){toast(err.message,'erro')}})
-async function excluirGrupo(id){if(!confirmarExclusao('Excluir este grupo de risco?'))return;try{await api(`grupos-risco/${id}`,{method:'DELETE'});toast('Grupo excluído.');carregarDados()}catch(err){toast(err.message,'erro')}}
+async function excluirGrupo(id){if(!await confirmarExclusao('Excluir este grupo de risco?'))return;try{await api(`grupos-risco/${id}`,{method:'DELETE'});toast('Grupo excluído.');carregarDados()}catch(err){toast(err.message,'erro')}}
 carregarDados();
 </script>
 <%- include('partials/foot') %>

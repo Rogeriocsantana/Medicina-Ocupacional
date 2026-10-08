@@ -6,7 +6,7 @@ const examesCtrl = makeCrudController('ExamesComplementares', ['Nome', 'Ordem'])
 const gruposCtrl = makeCrudController('GruposRisco', ['Nome', 'Cor', 'Ordem']);
 const empresasCtrl = makeCrudController(
   'Empresas',
-  ['RazaoSocial', 'CNPJ', 'Endereco', 'Bairro', 'CidadeUf', 'Cep', 'Telefone'],
+  ['RazaoSocial', 'CNPJ', 'Endereco', 'Bairro', 'CidadeUf', 'Cep', 'Telefone', 'LogoData'],
   ['RazaoSocial', 'CNPJ']
 );
 

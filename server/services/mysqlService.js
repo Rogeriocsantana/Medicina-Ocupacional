@@ -19,7 +19,7 @@ const DB_CONFIG = {
 
 const pool = mysql.createPool(DB_CONFIG);
 const DB_DESCRIPTION = `mysql://${DB_CONFIG.host}:${DB_CONFIG.port}/${DB_CONFIG.database}`;
-const REQUIRED_SCHEMA_VERSION = '010_perguntas_anamnese';
+const REQUIRED_SCHEMA_VERSION = '022_codigo_funcionario';
 
 const DEFAULT_CONFIG = {
   RazaoSocial: '',
@@ -44,8 +44,8 @@ const SCHEMAS = {
   GruposRisco: ['ID', 'Nome', 'Cor', 'Ordem'],
   Cargo_Risco: ['ID', 'CargoID', 'RiscoID'],
   Cargo_Exame: ['ID', 'CargoID', 'ExameID'],
-  Empresas: ['ID', 'RazaoSocial', 'CNPJ', 'Endereco', 'Bairro', 'CidadeUf', 'Cep', 'Telefone'],
-  Funcionarios: ['ID', 'Nome', 'CPF', 'DataNascimento', 'DataAdmissao', 'UltimoExame', 'Vencimento', 'ObservacaoCondicao', 'Condicao', 'Status', 'Situacao', 'SetorID', 'CargoID', 'EmpresaID'],
+  Empresas: ['ID', 'RazaoSocial', 'CNPJ', 'Endereco', 'Bairro', 'CidadeUf', 'Cep', 'Telefone', 'LogoData'],
+  Funcionarios: ['ID', 'Nome', 'CodigoFuncionario', 'CPF', 'DataNascimento', 'DataAdmissao', 'DataDesligamento', 'UltimoExame', 'Vencimento', 'ObservacaoCondicao', 'Condicao', 'Status', 'Situacao', 'SetorID', 'CargoID', 'EmpresaID'],
   HistoricoPDF: [
     'ID', 'FuncionarioID', 'Nome', 'CPF', 'DataNascimento', 'Cargo', 'Setor',
     'DataGeracao', 'ArquivoPDF', 'TipoExame', 'CargoID', 'SetorID',
@@ -70,7 +70,7 @@ const MODELS = {
     table: 'empresas',
     fields: {
       ID: 'id', RazaoSocial: 'razao_social', CNPJ: 'cnpj', Endereco: 'endereco',
-      Bairro: 'bairro', CidadeUf: 'cidade_uf', Cep: 'cep', Telefone: 'telefone'
+      Bairro: 'bairro', CidadeUf: 'cidade_uf', Cep: 'cep', Telefone: 'telefone', LogoData: 'logo_data'
     }
   },
   GruposRisco: {
@@ -96,16 +96,16 @@ const MODELS = {
   Funcionarios: {
     table: 'funcionarios',
     fields: {
-      ID: 'id', Nome: 'nome', CPF: 'cpf', DataNascimento: 'data_nascimento',
+      ID: 'id', Nome: 'nome', CodigoFuncionario: 'codigo_funcionario', CPF: 'cpf', DataNascimento: 'data_nascimento',
       DataAdmissao: 'data_admissao', UltimoExame: 'ultimo_exame', Vencimento: 'vencimento',
-      ObservacaoCondicao: 'observacao_condicao', Condicao: 'condicao', Status: 'status', Situacao: 'situacao',
+      DataDesligamento: 'data_desligamento', ObservacaoCondicao: 'observacao_condicao', Condicao: 'condicao', Status: 'status', Situacao: 'situacao',
       SetorID: 'setor_id', CargoID: 'cargo_id', EmpresaID: 'empresa_id'
     }
   },
   HistoricoPDF: {
     table: 'historico_aso',
     fields: {
-      ID: 'id', FuncionarioID: 'funcionario_id', Nome: 'nome', CPF: 'cpf', DataNascimento: 'data_nascimento',
+      ID: 'id', FuncionarioID: 'funcionario_id', ExameRealizadoID: 'exame_realizado_id', Nome: 'nome', CPF: 'cpf', DataNascimento: 'data_nascimento',
       Cargo: 'cargo', Setor: 'setor', DataGeracao: 'data_geracao',
       ArquivoPDF: 'arquivo_pdf', TipoExame: 'tipo_exame', CargoID: 'cargo_id',
       SetorID: 'setor_id', Conclusao: 'conclusao', ExamesDatas: 'exames_datas',

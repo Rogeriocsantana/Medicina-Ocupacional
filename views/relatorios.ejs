@@ -1,0 +1,66 @@
+<% const pageTitle = 'Relatórios'; %>
+<%- include('partials/head', {pageTitle}) %>
+<%- include('partials/nav', {pageTitle, active: 'relatorios'}) %>
+
+<div class="approved-page-header"><div><h3 class="approved-page-title">Consulte e gere relatórios ocupacionais</h3><p class="approved-page-subtitle">Documentos gerados diretamente com os dados do sistema.</p></div></div>
+<div class="report-toolbar">
+  <select id="relatorio-tipo" class="approved-input" aria-label="Tipo de relatório">
+    <option value="atestados">Atestados por setor</option>
+    <option value="atestados-cid">Atestados por CID</option>
+    <option value="fechamento">Fechamento mensal PCMSO</option>
+    <option value="exames">Exames realizados por setor</option>
+    <option value="acidentes">Acidentes / CAT por setor</option>
+    <option value="encaminhamentos">Encaminhamentos por setor</option>
+  </select>
+  <select id="relatorio-empresa" class="approved-input" aria-label="Empresa"><option value="">Todas as empresas</option></select>
+  <select id="relatorio-ano" class="approved-input" aria-label="Ano"><% for(let ano=new Date().getFullYear()+1;ano>=2020;ano--){ %><option value="<%= ano %>" <%= ano===new Date().getFullYear()?'selected':'' %>><%= ano %></option><% } %></select>
+  <select id="relatorio-mes" class="approved-input" aria-label="Até o mês"><% ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].forEach((mes,indice)=>{ %><option value="<%= indice+1 %>" <%= indice+1===new Date().getMonth()+1?'selected':'' %>>Janeiro a <%= mes.toLowerCase() %></option><% }) %></select>
+  <a id="gerar-relatorio" class="approved-button primary" href="#"><span data-ui-icon="fileText"></span>Gerar PDF</a>
+</div>
+
+<section class="report-paper" aria-label="Prévia do relatório">
+  <header class="report-paper-head">
+    <div><img src="<%= baseUrl('public/images/logo-relatorios.png') %>" alt="Santa Tereza" class="report-paper-logo"></div>
+    <div class="report-paper-title"><h4 id="previa-titulo">ATESTADOS POR SETOR</h4><small id="previa-periodo"></small></div>
+    <div class="report-paper-meta"><small>Emitido em <%= new Date().toLocaleDateString('pt-BR') %></small><small id="previa-cnpj"></small></div>
+  </header>
+  <div id="previa-estatisticas" class="report-stats"></div>
+  <div id="previa-conteudo" class="report-content"><p class="report-empty">Carregando relatório...</p></div>
+  <footer class="report-paper-foot"><span>Santa Tereza</span><span>Prévia dos dados do sistema</span></footer>
+</section>
+<section id="previa-detalhes" class="report-paper hidden" aria-label="Detalhamento mensal do relatório"></section>
+
+<style>
+  .report-toolbar{display:grid;grid-template-columns:minmax(190px,1.25fr) minmax(170px,1fr) minmax(95px,.55fr) minmax(160px,.9fr) auto;align-items:center;gap:10px;margin-bottom:20px}
+  .report-paper{width:min(100%,930px);min-height:540px;margin:0 auto 24px;padding:28px 34px 22px;background:#fff;color:#111827;box-shadow:0 8px 28px rgba(15,23,42,.13)}
+  .report-paper-head{display:grid;grid-template-columns:1fr 1.6fr 1fr;align-items:center;border-bottom:2px solid #0b3158;padding-bottom:14px}.report-paper-head small{display:block;font-size:10px;color:#475569}.report-paper-logo{width:150px;height:48px;object-fit:contain;object-position:left center}.report-paper-title{text-align:center}.report-paper-title h4{font-size:14px;font-weight:700}.report-paper-meta{text-align:right;line-height:1.8}
+  .report-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}.report-stat{border:1px solid #cbd5e1;padding:10px;min-height:68px}.report-stat small{display:block;font-size:9px;color:#64748b}.report-stat strong{display:block;margin-top:5px;font-size:17px}
+  .report-table-wrap{overflow-x:auto}.report-table{width:100%;border-collapse:collapse;font-size:10px}.report-table th{padding:8px 6px;border:1px solid #a9bbd0;background:#edf3f9;text-align:right;white-space:nowrap;font-weight:600}.report-table td{padding:8px 6px;border:1px solid #cbd5e1;text-align:right;white-space:nowrap}.report-table th:first-child,.report-table td:first-child{text-align:left;min-width:160px}.report-table tbody tr:hover{background:#f7faff}.report-empty{padding:18px 8px;color:#667085;font-size:12px}
+  .report-paper-foot{display:flex;justify-content:space-between;margin-top:20px;padding-top:8px;border-top:1px solid #cbd5e1;font-size:9px;color:#64748b}.report-monthly-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.report-monthly-box{border:1px solid #a9bbd0;padding:12px;min-height:110px}.report-monthly-box h5{font-size:11px;font-weight:700;margin-bottom:10px}.report-monthly-box p{font-size:10px;margin:7px 0}.report-monthly-box.full{grid-column:1/-1;min-height:70px}.report-signatures{display:flex;justify-content:space-between;gap:20px;margin:50px 0 28px;font-size:9px;text-align:center}.report-signatures span{width:40%;border-top:1px solid #111827;padding-top:5px}
+  .report-detail-month{background:#e5e9ef;color:#000;text-align:center;font-size:12px;font-weight:700;padding:7px;margin:16px 0 10px}.report-detail-block{display:grid;grid-template-columns:105px minmax(0,1fr);margin-bottom:14px;font-size:10px}.report-detail-name{border:1px solid #bfc7d1;background:#f3f6f9;color:#000;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px}.report-detail-table{width:100%;border-collapse:collapse;table-layout:auto}.report-detail-table th,.report-detail-table td{border:1px solid #bfc7d1;padding:6px 8px;text-align:center;white-space:normal;overflow-wrap:anywhere}.report-detail-table th{background:#f7f9fb;color:#000;font-weight:700}.report-detail-table th:first-child{background:#ff8790}.report-detail-table td:nth-child(2){min-width:165px}.report-detail-table .report-detail-empty{color:#64748b}
+  @media(max-width:1000px){.report-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.report-toolbar>a{grid-column:1/-1}.report-paper{padding:22px 18px}}@media(max-width:600px){.report-stats{grid-template-columns:1fr}.report-paper-head{grid-template-columns:1fr 1fr}.report-paper-title{grid-column:1/-1;grid-row:2;margin-top:12px}.report-monthly-grid{grid-template-columns:1fr}.report-monthly-box.full{grid-column:auto}}
+</style>
+
+<script>
+const NOMES_MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+let empresasRelatorio=[];
+const cardRelatorio=(nome,valor)=>`<div class="report-stat"><small>${escapeHtml(nome)}</small><strong>${escapeHtml(String(valor))}</strong></div>`;
+function renderTabelaRelatorio(d){const cabecalho=`<tr><th>${escapeHtml(d.tituloGrupo||'Setor')}</th>${d.meses.map(m=>`<th>${escapeHtml(m)}</th>`).join('')}<th>Total</th><th>%</th></tr>`;const linhas=d.rows.map(r=>`<tr><td>${escapeHtml(r.setor)}</td>${r.meses.map(n=>`<td>${Number(n).toLocaleString('pt-BR')}</td>`).join('')}<td>${r.total.toLocaleString('pt-BR')}</td><td>${d.total?(r.total/d.total*100).toLocaleString('pt-BR',{maximumFractionDigits:1}):0}%</td></tr>`).join('')||`<tr><td colspan="${d.meses.length+3}" class="report-empty">Nenhum registro no período selecionado.</td></tr>`;return `<div class="report-table-wrap"><table class="report-table"><thead>${cabecalho}</thead><tbody>${linhas}</tbody></table></div>`}
+function renderFechamento(d){const cabecalho=`<tr><th>Indicador</th>${d.meses.map(m=>`<th>${escapeHtml(m)}</th>`).join('')}<th>Geral</th></tr>`;const linhas=d.linhas.map(r=>`<tr><td>${escapeHtml(r.nome)}</td>${r.meses.map(n=>`<td>${Number(n).toLocaleString('pt-BR')}</td>`).join('')}<td>${Number(r.total).toLocaleString('pt-BR')}</td></tr>`).join('');return '<div class="report-table-wrap"><table class="report-table"><thead>'+cabecalho+'</thead><tbody>'+linhas+'</tbody></table></div>'}
+async function carregarRelatorio(){const tipo=document.getElementById('relatorio-tipo').value,ano=document.getElementById('relatorio-ano').value,mes=document.getElementById('relatorio-mes').value,empresa=document.getElementById('relatorio-empresa').value,q=new URLSearchParams({tipo,ano,mes});if(empresa)q.set('empresa',empresa);const d=await api(`relatorios/atestados?${q}`),atestado=tipo.startsWith('atestados'),fechamento=tipo==='fechamento';document.getElementById('previa-titulo').textContent=d.titulo.toUpperCase();document.getElementById('previa-periodo').textContent=`Janeiro a ${NOMES_MESES[d.mes-1]} de ${d.year}`;const selecionada=empresasRelatorio.find(e=>String(e.ID)===String(empresa));document.getElementById('previa-cnpj').textContent=selecionada?.CNPJ?`CNPJ ${selecionada.CNPJ}`:'';document.querySelector('.report-paper-logo').src=selecionada?.LogoData||appUrl('public/images/logo-relatorios.png');document.getElementById('previa-estatisticas').innerHTML=fechamento?cardRelatorio('Atendimentos ocupacionais',d.resumo.atendimentos.toLocaleString('pt-BR'))+cardRelatorio('CAT emitidas',d.resumo.cats.toLocaleString('pt-BR'))+cardRelatorio('Dias médico do trabalho',d.resumo.presencas.toLocaleString('pt-BR')):cardRelatorio(d.unidade,d.total.toLocaleString('pt-BR'))+cardRelatorio(atestado?'Dias afastados':'Grupos com registros',atestado?Number(d.dias).toLocaleString('pt-BR',{maximumFractionDigits:1}):d.rows.length)+cardRelatorio(atestado?'Média por atestado':'Média por grupo',atestado?`${Number(d.media).toLocaleString('pt-BR',{maximumFractionDigits:1})} dia`:(d.rows.length?Number(d.total/d.rows.length).toLocaleString('pt-BR',{maximumFractionDigits:1}):'0'));document.getElementById('previa-conteudo').innerHTML=fechamento?renderFechamento(d):renderTabelaRelatorio(d);const detalhes=document.getElementById('previa-detalhes');detalhes.classList.toggle('hidden',!fechamento);detalhes.innerHTML=fechamento?renderDetalhesFechamento(d):'';document.getElementById('gerar-relatorio').href=appUrl(`api/relatorios/atestados/pdf?${q}`)}
+api('empresas').then(rows=>{empresasRelatorio=rows;document.getElementById('relatorio-empresa').innerHTML+=rows.map(e=>`<option value="${e.ID}">${escapeHtml(e.RazaoSocial)}</option>`).join('')}).catch(error=>toast(error.message,'erro'));
+['relatorio-tipo','relatorio-empresa','relatorio-ano','relatorio-mes'].forEach(id=>document.getElementById(id).addEventListener('change',()=>carregarRelatorio().catch(error=>toast(error.message,'erro'))));
+function renderDetalhesFechamento(d){
+  const imagem=escapeHtml(document.querySelector('.report-paper-logo').src);
+  const mes=escapeHtml(NOMES_MESES[d.mes-1].toUpperCase());
+  const sections=[['CAT',d.detalhes.cat],['Afastamentos',d.detalhes.afastamentos],['Gestante',d.detalhes.gestantes]];
+  const blocks=sections.map(([label,rows])=>{
+    const title=label==='Gestante'?'Funcionário':'Agente causador';
+    const body=rows.length?rows.map(r=>'<tr><td>'+escapeHtml(r.cargo||'—')+'</td><td>'+escapeHtml(r.setor||'—')+'</td><td>'+escapeHtml(label==='Gestante'?r.funcionario:r.agente||'—')+'</td></tr>').join(''):'<tr><td colspan="3" class="report-detail-empty">Nenhum registro no mês.</td></tr>';
+    return '<div class="report-detail-block"><div class="report-detail-name">'+escapeHtml(label)+'</div><table class="report-detail-table"><thead><tr><th>'+rows.length+'</th><th>Setor</th><th>'+title+'</th></tr></thead><tbody>'+body+'</tbody></table></div>';
+  }).join('');
+  return '<header class="report-paper-head"><div><img src="'+imagem+'" alt="Logo do relatório" class="report-paper-logo"></div><div class="report-paper-title"><h4>RELATÓRIO MENSAL PCMSO</h4><small>Janeiro a '+escapeHtml(NOMES_MESES[d.mes-1])+' de '+d.year+'</small></div><div class="report-paper-meta"><small>Emitido em '+new Date().toLocaleDateString('pt-BR')+'</small></div></header><div class="report-detail-month">'+mes+'</div>'+blocks+'<footer class="report-paper-foot"><span>Santa Tereza</span><span>Prévia dos dados do sistema</span></footer>';
+}
+carregarRelatorio().catch(error=>toast(error.message,'erro'));
+</script>
+<%- include('partials/foot') %>

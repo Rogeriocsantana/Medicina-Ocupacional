@@ -2,6 +2,36 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo.
 
+## [Não publicado]
+
+### Adicionado
+
+- Registros ocupacionais de exames, acidentes/CAT, encaminhamentos, atestados, condições e presença médica.
+- Código externo opcional do funcionário, único por empresa, com pesquisa e filtro de ativos sem código.
+- Modelo de atestados com CPF, Código Funcionário, Cod + Nome e CNPJ da empresa, instruções e validação por linha.
+- Testes dos identificadores e da prévia de importação de atestados.
+- Migrações até `022_codigo_funcionario`.
+
+### Alterado
+
+- Situação do funcionário limitada a ATIVO/DESLIGADO; condições transitórias gerenciadas com início/fim e sincronização no cadastro.
+- Sidebar, ícones, tipografia, tema escuro, preferências visuais e feedback de ações padronizados.
+- Paginação de setores/cargos com sete itens e funcionários/riscos/exames com seis.
+- Modais com título e ações fixos; rolagem restrita ao conteúdo.
+- Código, CPF e nascimento alinhados no formulário do funcionário.
+
+### Corrigido
+
+- Texto longo dos seletores limitado ao campo com reticências e nome completo no tooltip.
+- Importação de atestados identifica por CPF ou código + CNPJ e recusa identificadores conflitantes.
+
+### Segurança e operação
+
+- Dados pessoais de vínculos, script pontual de carga, planilhas, PDFs e backups locais excluídos do Git.
+- Documentação atualizada para migrações administrativas e preservação dos dados em atualizações.
+
+Esta seção descreve mudanças desde a release 1.2.0; não constitui uma nova tag ou publicação no GitHub.
+
 ## [1.2.0] - 2026-08-27
 
 ### Adicionado

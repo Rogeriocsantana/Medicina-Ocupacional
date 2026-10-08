@@ -1,36 +1,35 @@
-<% const pageTitle = 'Cadastro de Setores'; %>
+<% const pageTitle = 'Setores'; %>
 <%- include('partials/head', {pageTitle}) %>
 <%- include('partials/nav', {pageTitle, active: 'setores'}) %>
 
-<div class="flex justify-between items-end mb-stack-lg">
+<div class="approved-page-header">
   <div>
-    <h3 class="font-headline-lg text-headline-lg text-on-surface">Lista de Setores</h3>
-    <p class="text-on-surface-variant font-body-md text-body-md mt-1">Gerencie os departamentos e áreas de atuação da empresa.</p>
+    <h3 class="approved-page-title">Organize os setores da empresa</h3>
+    <p class="approved-page-subtitle">Estrutura organizacional utilizada nos cadastros e indicadores.</p>
   </div>
-  <button class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm" onclick="abrirModal()">
-    <span class="material-symbols-outlined">add</span> Adicionar Setor
-  </button>
+  <div class="approved-header-actions">
+    <a class="approved-button" href="<%= baseUrl('api/importacoes/cadastros/setores/modelo') %>" download><span data-ui-icon="download"></span>Baixar modelo</a>
+    <button class="approved-button" type="button" onclick="document.getElementById('arquivo-setores').click()"><span data-ui-icon="upload"></span>Importar planilha</button>
+    <button class="approved-button primary" type="button" onclick="abrirModal()"><span data-ui-icon="plus"></span>Novo setor</button>
+    <input id="arquivo-setores" class="approved-import-input" type="file" accept=".xlsx">
+  </div>
 </div>
-<div id="paginacao-setores"></div>
-
-<div class="mb-4 relative max-w-md">
-  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-  <input id="busca" type="text" placeholder="Buscar por nome do setor..." class="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary text-body-md">
+<div class="mb-3">
+  <div class="approved-search"><span data-ui-icon="search"></span><input id="busca" type="text" placeholder="Buscar setor ou empresa" class="approved-input"></div>
 </div>
 
-<div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+<div class="approved-data-card">
   <table class="w-full text-left border-collapse">
     <thead class="bg-background-main border-b border-border-subtle">
       <tr>
-        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">ID</th>
-        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Nome do Setor</th>
-        <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase text-right">Ações</th>
+        <th class="px-6 py-4">Setor</th><th class="px-6 py-4">Empresa</th><th class="px-6 py-4">Funcionários</th><th class="px-6 py-4">Situação</th><th class="px-6 py-4 text-right">Ações</th>
       </tr>
     </thead>
     <tbody id="tbody-setores" class="divide-y divide-border-subtle font-table-data text-table-data">
-      <tr><td colspan="3" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
+      <tr><td colspan="5" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
     </tbody>
   </table>
+  <div id="paginacao-setores" class="px-4"></div>
 </div>
 
 <!-- Modal -->
@@ -59,7 +58,7 @@
         <h3 class="font-headline-md text-headline-md">Colaboradores do setor</h3>
         <p id="colaboradores-setor-nome" class="text-on-surface-variant mt-1"></p>
       </div>
-      <button type="button" onclick="fecharColaboradoresSetor()" class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg" title="Fechar">
+      <button type="button" onclick="fecharColaboradoresSetor()" class="modal-close-button p-2 text-on-surface-variant rounded-lg" title="Fechar">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
@@ -67,14 +66,14 @@
       <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
       <input id="busca-colaboradores-setor" type="text" placeholder="Buscar por cargo ou nome do colaborador..." class="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary text-body-md">
     </div>
-    <div class="border border-border-subtle rounded-xl overflow-auto flex-1">
-      <table class="w-full text-left border-collapse text-sm">
+    <div class="border border-border-subtle rounded-xl overflow-y-auto overflow-x-hidden flex-1">
+      <table class="w-full table-fixed text-left border-collapse text-sm">
         <thead class="bg-background-main border-b border-border-subtle sticky top-0">
           <tr>
             <th class="px-4 py-3 font-label-caps text-label-caps uppercase">Colaborador</th>
             <th class="px-4 py-3 font-label-caps text-label-caps uppercase">Cargo atual</th>
             <th class="px-4 py-3 font-label-caps text-label-caps uppercase">Situação</th>
-            <th class="px-4 py-3 font-label-caps text-label-caps uppercase text-right">Ação</th>
+            <th class="w-16 px-3 py-3 font-label-caps text-label-caps uppercase text-center">Ação</th>
           </tr>
         </thead>
         <tbody id="tbody-colaboradores-setor" class="divide-y divide-border-subtle font-table-data text-table-data"></tbody>
@@ -82,14 +81,14 @@
     </div>
     <div class="flex items-center justify-between gap-4 pt-4">
       <p id="total-colaboradores-setor" class="text-on-surface-variant text-sm"></p>
-      <button type="button" onclick="fecharColaboradoresSetor()" class="px-5 py-2.5 rounded-lg font-semibold text-on-surface-variant hover:bg-surface-container-low">Fechar</button>
+      <button type="button" onclick="fecharColaboradoresSetor()" class="modal-close-button px-5 py-2.5 rounded-lg font-semibold text-on-surface-variant">Fechar</button>
     </div>
   </div>
 </div>
 
 <script>
 let paginaSetores = 1;
-const ITENS_POR_PAGINA = 5;
+const ITENS_POR_PAGINA = 7;
 let buscaSetoresAtual = '';
 let colaboradoresSetor = [];
 let setorColaboradoresAtual = null;
@@ -97,22 +96,21 @@ async function carregarSetores(busca = buscaSetoresAtual) {
   buscaSetoresAtual = busca;
   const tbody = document.getElementById('tbody-setores');
   try {
-    const todosSetores = await api('setores');
-    const setores = todosSetores.filter(setor => String(setor.Nome || '').toLowerCase().includes(busca.toLowerCase().trim()));
+    const [todosSetores, funcionarios] = await Promise.all([api('setores'), api('funcionarios')]);
+    const setores = todosSetores.map(setor => { const vinculados=funcionarios.filter(f=>String(f.SetorID)===String(setor.ID)); return {...setor, TotalFuncionarios:vinculados.length, EmpresaNome:vinculados[0]?.EmpresaNome||'—'} }).filter(setor => `${setor.Nome||''} ${setor.EmpresaNome||''}`.toLowerCase().includes(busca.toLowerCase().trim()));
     if (!setores.length) {
-      tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-on-surface-variant">Nenhum setor cadastrado.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-on-surface-variant">Nenhum setor cadastrado.</td></tr>';
       return;
     }
     const pagina = setores.slice((paginaSetores - 1) * ITENS_POR_PAGINA, paginaSetores * ITENS_POR_PAGINA);
     tbody.innerHTML = pagina.map(s => `
       <tr class="hover:bg-[#EBF2FA] transition-colors group">
-        <td class="px-6 py-4 font-table-data text-table-data text-on-surface-variant">#SET-${String(s.ID).padStart(3,'0')}</td>
-        <td class="px-6 py-4 font-semibold">${s.Nome}</td>
-        <td class="px-6 py-4 text-right">
-          <div class="flex justify-end gap-2 opacity-60 group-hover:opacity-100">
-            <button onclick='abrirColaboradoresSetor(${JSON.stringify(s).replace(/'/g, "&#39;")})' class="p-2 text-primary hover:bg-primary-fixed rounded" title="Ver colaboradores"><span class="material-symbols-outlined">group</span></button>
-            <button onclick='editar(${JSON.stringify(s).replace(/'/g, "&#39;")})' class="p-2 text-primary hover:bg-primary-fixed rounded"><span class="material-symbols-outlined">edit</span></button>
-            <button onclick="excluir(${s.ID})" class="p-2 text-error hover:bg-error-container rounded"><span class="material-symbols-outlined">delete</span></button>
+        <td class="px-6 py-4 font-semibold">${escapeHtml(s.Nome)}</td><td class="px-6 py-4">${escapeHtml(s.EmpresaNome)}</td><td class="px-6 py-4">${s.TotalFuncionarios}</td><td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs">Ativo</span></td>
+        <td class="px-6 py-4 text-center">
+          <div class="approved-table-actions">
+            <button onclick='abrirColaboradoresSetor(${JSON.stringify(s).replace(/'/g, "&#39;")})' class="approved-action" title="Ver colaboradores"><span class="material-symbols-outlined">group</span></button>
+            <button onclick='editar(${JSON.stringify(s).replace(/'/g, "&#39;")})' class="approved-action" title="Editar setor"><span class="material-symbols-outlined">edit</span></button>
+            <button onclick="excluir(${s.ID})" class="approved-action danger" title="Excluir setor"><span class="material-symbols-outlined">delete</span></button>
           </div>
         </td>
       </tr>`).join('');
@@ -175,10 +173,10 @@ function renderColaboradoresSetor() {
     <tr class="hover:bg-[#EBF2FA] transition-colors">
       <td class="px-4 py-3 font-semibold">${escapeHtml(f.Nome || '')}</td>
       <td class="px-4 py-3">${escapeHtml(f.CargoNome || '')}</td>
-      <td class="px-4 py-3">${escapeHtml(f.Situacao || '')}</td>
-      <td class="px-4 py-3 text-right">
-        <button onclick="editarColaboradorSetor(${f.ID})" class="inline-flex items-center gap-1 px-3 py-2 text-primary font-semibold hover:bg-primary-fixed rounded-lg" title="Corrigir cargo ou setor">
-          <span class="material-symbols-outlined text-[20px]">edit</span> Corrigir
+      <td class="px-4 py-3">${situacaoEtiqueta(f.Situacao)}</td>
+      <td class="px-3 py-3 text-center">
+        <button onclick="editarColaboradorSetor(${f.ID})" aria-label="Corrigir cargo ou setor" class="inline-flex w-9 h-9 items-center justify-center text-primary hover:bg-primary-fixed rounded-lg" title="Corrigir cargo ou setor">
+          <span class="material-symbols-outlined text-[20px]">edit</span>
         </button>
       </td>
     </tr>`).join('') : '<tr><td colspan="4" class="px-4 py-4 text-on-surface-variant">Nenhum colaborador encontrado neste setor.</td></tr>';
@@ -207,6 +205,10 @@ function editarColaboradorSetor(id) {
 }
 
 document.getElementById('busca-colaboradores-setor').addEventListener('input', renderColaboradoresSetor);
+document.getElementById('arquivo-setores').addEventListener('change', async e => {
+  const arquivo=e.target.files[0]; if(!arquivo)return;
+  try { const resposta=await fetch(apiUrl('importacoes/cadastros/setores'),{method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:await arquivo.arrayBuffer()}); const dados=await resposta.json(); if(!resposta.ok)throw new Error(dados.erro||'Falha ao importar.'); toast(`${dados.importados} setor(es) importado(s).${dados.ignorados?` ${dados.ignorados} já existente(s).`:''}`); await carregarSetores(); } catch(error){toast(error.message,'erro')} finally {e.target.value=''}
+});
 
 document.getElementById('form-setor').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -229,7 +231,7 @@ document.getElementById('form-setor').addEventListener('submit', async (e) => {
 });
 
 async function excluir(id) {
-  if (!confirmarExclusao('Excluir este setor? Esta ação não pode ser desfeita.')) return;
+  if (!await confirmarExclusao('Excluir este setor? Esta ação não pode ser desfeita.')) return;
   try {
     await api(`setores/${id}`, { method: 'DELETE' });
     toast('Setor excluído.');

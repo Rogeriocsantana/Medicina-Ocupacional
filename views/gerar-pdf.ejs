@@ -72,6 +72,13 @@
         <option value="">Carregando...</option>
       </select>
     </div>
+    <div id="painel-modalidade-demissional" class="hidden">
+      <label class="block text-body-md font-semibold mb-1" for="modalidadeDemissional">Tipo de desligamento</label>
+      <select id="modalidadeDemissional" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
+        <option value="demissional_colaborador">Colaborador</option>
+        <option value="demissional_empresa">Empresa</option>
+      </select>
+    </div>
 
     <div id="preview-riscos" class="hidden bg-background-main border border-border-subtle rounded-lg p-4">
       <h4 class="font-bold text-body-md mb-2">Riscos ocupacionais deste cargo</h4>
@@ -85,11 +92,6 @@
       </button>
       <div id="painel-opcional" class="hidden px-4 pb-4 pt-2 space-y-4 border-t border-border-subtle">
         <p class="text-on-surface-variant text-body-md">Se não preencher, o PDF sai com linhas em branco para completar a caneta.</p>
-
-        <div>
-          <label class="block text-body-md font-semibold mb-1">Data da avaliação clínica</label>
-          <input id="dataAvaliacaoClinica" type="date" class="w-full px-4 py-2.5 border border-border-subtle rounded-lg focus:ring-2 focus:ring-primary">
-        </div>
 
         <div>
           <label class="block text-body-md font-semibold mb-2">Datas dos exames complementares</label>
@@ -127,6 +129,19 @@ let examesCadastro = [];
 let debounceBuscaFunc = null;
 const params = new URLSearchParams(window.location.search);
 const editId = params.get('id');
+const funcionarioId = params.get('funcionarioId');
+
+function tipoRegraSelecionado() {
+  const tipo = document.getElementById('tipoExame').value;
+  return tipo === 'demissional'
+    ? document.getElementById('modalidadeDemissional').value
+    : tipo;
+}
+
+function atualizarModalidadeDemissional() {
+  const demissional = document.getElementById('tipoExame').value === 'demissional';
+  document.getElementById('painel-modalidade-demissional').classList.toggle('hidden', !demissional);
+}
 
 bindCpfMask(document.getElementById('cpf'));
 
@@ -171,7 +186,7 @@ function preencherFuncionario(func) {
   document.getElementById('lista-funcionarios').classList.add('hidden');
   mostrarFuncionarioSelecionado(func);
   atualizarPreviewRiscos(func.CargoID, func.SetorID);
-  atualizarExamesDoCargo(func.CargoID, func.SetorID, document.getElementById('tipoExame').value);
+  atualizarExamesDoCargo(func.CargoID, func.SetorID, tipoRegraSelecionado());
 }
 
 async function buscarFuncionarios(termo) {
@@ -312,10 +327,19 @@ async function carregarSelects() {
   document.getElementById('cargoId').innerHTML = '<option value="">Selecione...</option>' +
     cargos.map(c => `<option value="${c.ID}">${escapeHtml(c.Nome)}</option>`).join('');
   const tiposSelecionaveis = tipos.filter(t => Number(t.SelecionavelASO) !== 0);
-  document.getElementById('tipoExame').innerHTML = tiposSelecionaveis.length
-    ? tiposSelecionaveis.map(t => `<option value="${escapeHtml(t.Chave)}">${escapeHtml(t.Nome)}</option>`).join('')
+  const tiposPrincipais = [];
+  let demissionalIncluido = false;
+  tiposSelecionaveis.forEach(t => {
+    if (String(t.Chave).startsWith('demissional')) {
+      if (!demissionalIncluido) tiposPrincipais.push({ Chave: 'demissional', Nome: 'Demissional' });
+      demissionalIncluido = true;
+    } else tiposPrincipais.push(t);
+  });
+  document.getElementById('tipoExame').innerHTML = tiposPrincipais.length
+    ? tiposPrincipais.map(t => `<option value="${escapeHtml(t.Chave)}">${escapeHtml(t.Nome)}</option>`).join('')
     : '<option value="admissional">Admissional</option>';
-  await atualizarExamesDoCargo(document.getElementById('cargoId').value, document.getElementById('setorId').value, document.getElementById('tipoExame').value);
+  atualizarModalidadeDemissional();
+  await atualizarExamesDoCargo(document.getElementById('cargoId').value, document.getElementById('setorId').value, tipoRegraSelecionado());
 }
 
 async function carregarParaEdicao(id) {
@@ -327,17 +351,21 @@ async function carregarParaEdicao(id) {
   document.getElementById('setorId').value = reg.SetorID || '';
   document.getElementById('cargoId').value = reg.CargoID || '';
   document.getElementById('empresaId').value = reg.EmpresaID || '';
-  document.getElementById('tipoExame').value = reg.TipoExame || 'admissional';
-  document.getElementById('dataAvaliacaoClinica').value = reg.DataAvaliacaoClinica || '';
-
-  await atualizarExamesDoCargo(reg.CargoID, reg.SetorID, reg.TipoExame || 'admissional', reg.ExamesDatas || {});
+  const tipoSalvo = reg.TipoExame || 'admissional';
+  const demissional = tipoSalvo === 'demissional' || String(tipoSalvo).startsWith('demissional_');
+  document.getElementById('tipoExame').value = demissional ? 'demissional' : tipoSalvo;
+  document.getElementById('modalidadeDemissional').value = tipoSalvo === 'demissional_empresa'
+    ? 'demissional_empresa'
+    : 'demissional_colaborador';
+  atualizarModalidadeDemissional();
+  await atualizarExamesDoCargo(reg.CargoID, reg.SetorID, demissional ? document.getElementById('modalidadeDemissional').value : tipoSalvo, reg.ExamesDatas || {});
 
   const conc = reg.Conclusao || '';
   const radio = document.querySelector(`input[name="conclusao"][value="${conc}"]`);
   if (radio) radio.checked = true;
   else document.querySelector('input[name="conclusao"][value=""]').checked = true;
 
-  const temOpcional = conc || reg.DataAvaliacaoClinica || Object.keys(reg.ExamesDatas || {}).length;
+  const temOpcional = conc || Object.keys(reg.ExamesDatas || {}).length;
   if (temOpcional) abrirPainelOpcional();
 
   document.getElementById('titulo-pagina').textContent = 'Editar ASO';
@@ -357,13 +385,21 @@ async function carregarParaEdicao(id) {
 document.getElementById('cargoId').addEventListener('change', (e) => {
   const setorId = document.getElementById('setorId').value;
   atualizarPreviewRiscos(e.target.value, setorId);
-  atualizarExamesDoCargo(e.target.value, setorId, document.getElementById('tipoExame').value);
+  atualizarExamesDoCargo(e.target.value, setorId, tipoRegraSelecionado());
 });
 document.getElementById('tipoExame').addEventListener('change', () => {
+  atualizarModalidadeDemissional();
   atualizarExamesDoCargo(
     document.getElementById('cargoId').value,
     document.getElementById('setorId').value,
-    document.getElementById('tipoExame').value
+    tipoRegraSelecionado()
+  );
+});
+document.getElementById('modalidadeDemissional').addEventListener('change', () => {
+  atualizarExamesDoCargo(
+    document.getElementById('cargoId').value,
+    document.getElementById('setorId').value,
+    tipoRegraSelecionado()
   );
 });
 
@@ -377,7 +413,7 @@ document.getElementById('form-pdf').addEventListener('submit', async (e) => {
     || !document.getElementById('setorId').value
     || !document.getElementById('cargoId').value;
   if (faltando) {
-    toast('Selecione um funcionário cadastrado (nome, CPF, nascimento, setor e cargo vêm do cadastro).', 'erro');
+    toast('Selecione um funcionário cadastrado.', 'erro');
     const busca = document.getElementById('buscaFuncionario');
     if (!document.getElementById('painel-busca-funcionario').classList.contains('hidden')) busca.focus();
     return;
@@ -408,9 +444,8 @@ document.getElementById('form-pdf').addEventListener('submit', async (e) => {
     setorId: document.getElementById('setorId').value,
     cargoId: document.getElementById('cargoId').value,
     empresaId: document.getElementById('empresaId').value,
-    tipoExame: document.getElementById('tipoExame').value,
+    tipoExame: tipoRegraSelecionado(),
     conclusao: conclusaoEl ? conclusaoEl.value : '',
-    dataAvaliacaoClinica: document.getElementById('dataAvaliacaoClinica').value || '',
     examesDatas
   };
   if (historicoId) payload.historicoId = Number(historicoId) || historicoId;
@@ -458,7 +493,13 @@ document.getElementById('form-pdf').addEventListener('submit', async (e) => {
 (async function init() {
   try {
     await carregarSelects();
-    if (editId) await carregarParaEdicao(editId);
+    if (editId) {
+      await carregarParaEdicao(editId);
+    } else if (funcionarioId) {
+      const funcionario = await api(`funcionarios/${encodeURIComponent(funcionarioId)}`);
+      preencherFuncionario(funcionario);
+      document.getElementById('tipoExame').focus();
+    }
   } catch (err) {
     toast(err.message, 'erro');
   }

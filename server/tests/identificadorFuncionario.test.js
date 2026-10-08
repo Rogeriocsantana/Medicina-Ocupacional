@@ -1,0 +1,16 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { identifiers, resolve } = require('../services/identificadorFuncionarioService');
+const cpf = '52998224725', cnpj = '05029064000139';
+test('CPF sozinho', () => assert.equal(identifiers({cpf}).cpf, cpf));
+test('extrai código', () => assert.equal(identifiers({cod_nome:'1109 - Nome',cnpj}).codigo, '1109'));
+test('código requer empresa', () => assert.throws(() => identifiers({codigo_funcionario:'1109'}), /CNPJ/));
+test('identificador obrigatório', () => assert.throws(() => identifiers({}), /Preencha/));
+test('códigos conflitantes', () => assert.throws(() => identifiers({codigo_funcionario:'1',cod_nome:'2 - Nome',cnpj}), /diferentes/));
+test('nome sozinho recusado', () => assert.throws(() => identifiers({cod_nome:'Nome',cnpj}), /formato/));
+test('CPF inválido recusado', () => assert.throws(() => identifiers({cpf:'123',codigo_funcionario:'1',cnpj}), /CPF/));
+const rows = [{id:1,nome:'Nome correto',cpf,codigo_funcionario:'1109',cnpj},{id:2,cpf:'11111111111',codigo_funcionario:'1109',cnpj:'51879500000186'}];
+const db = {query: async () => [rows]};
+test('código separado por empresa', async () => assert.equal((await resolve(db,{codigo_funcionario:'1109',cnpj})).id,1));
+test('CPF e código divergentes', async () => assert.rejects(resolve(db,{cpf,codigo_funcionario:'22',cnpj}), /correspondente/));
+test('empresa divergente', async () => assert.rejects(resolve(db,{cpf,cnpj:'00000000000000'}), /correspondente/));

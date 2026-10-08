@@ -3,6 +3,8 @@ const customParseFormat = require('dayjs/plugin/customParseFormat');
 dayjs.extend(customParseFormat);
 const db = require('../services/mysqlService');
 const { formatCpf, isValidCpf, onlyDigits } = require('../utils/cpf');
+const registrosService = require('../services/registrosOcupacionaisService');
+const condicoesService = require('./../services/condicoesPresencaService');
 
 function toInputDate(value) {
   if (!value) return '';
@@ -27,6 +29,7 @@ function serializarFuncionario(row, periodicidadeMeses = 12) {
     ...rest,
     DataNascimento: toInputDate(rest.DataNascimento),
     DataAdmissao: toInputDate(rest.DataAdmissao),
+    DataDesligamento: toInputDate(rest.DataDesligamento),
     UltimoExame: ultimoExame,
     Vencimento: vencimento,
     Status: vencimento ? (atrasado ? 'ATRASADO' : 'NO PRAZO') : 'SEM VENCIMENTO',
@@ -88,6 +91,7 @@ async function cpfEmUso(cpf, ignoreId = null) {
 
 function validarPayload(body, isUpdate = false) {
   const { Nome, CPF, DataNascimento, SetorID, CargoID, EmpresaID, Situacao } = body;
+  if (body.CodigoFuncionario && !/^\d{1,30}$/.test(String(body.CodigoFuncionario).trim())) return 'Código do funcionário deve conter até 30 dígitos.';
   if (!Nome || !String(Nome).trim()) return 'Nome é obrigatório.';
   if (!CPF) return 'CPF é obrigatório.';
   if (!isValidCpf(CPF)) return 'CPF inválido.';
@@ -95,9 +99,10 @@ function validarPayload(body, isUpdate = false) {
   if (!SetorID) return 'Setor é obrigatório.';
   if (!CargoID) return 'Cargo é obrigatório.';
   if (!EmpresaID) return 'Empresa é obrigatória.';
-  if (!['ATIVO', 'AFASTADO', 'DESLIGADO'].includes(String(Situacao || '').toUpperCase())) {
-    return 'Situação deve ser ATIVO, AFASTADO ou DESLIGADO.';
+  if (!['ATIVO', 'DESLIGADO'].includes(String(Situacao || '').toUpperCase())) {
+    return 'Situação deve ser ATIVO ou DESLIGADO.';
   }
+  if (String(Situacao).toUpperCase() === 'DESLIGADO' && !condicoesService.date(body.DataDesligamento)) return 'Informe a data de desligamento.';
   return null;
 }
 
@@ -112,7 +117,7 @@ module.exports = {
         enriched = enriched.filter(r => {
           const nome = String(r.Nome || '').toLowerCase();
           const cpf = onlyDigits(r.CPF);
-          return nome.includes(busca) ||
+          return nome.includes(busca) || String(r.CodigoFuncionario || '').includes(busca) ||
             (buscaCpf && cpf.includes(buscaCpf)) ||
             formatCpf(r.CPF).toLowerCase().includes(busca) ||
             String(r.SetorNome || '').toLowerCase().includes(busca) ||
@@ -145,6 +150,7 @@ module.exports = {
           return elegivel && vencimento?.isValid() && !vencimento.isBefore(hoje, 'day') && !vencimento.isAfter(limite, 'day');
         });
       }
+      if (req.query.semCodigo === '1') enriched = enriched.filter(r => !r.CodigoFuncionario && r.Situacao === 'ATIVO' && !/NUTRI/i.test(r.EmpresaNome));
       if (empresa) enriched = enriched.filter(r => String(r.EmpresaID) === empresa);
       if (setor) enriched = enriched.filter(r => String(r.SetorID) === setor);
       enriched.sort((a, b) => String(a.Nome).localeCompare(String(b.Nome), 'pt-BR'));
@@ -171,6 +177,7 @@ module.exports = {
     try {
       const erro = validarPayload(req.body);
       if (erro) return res.status(400).json({ erro });
+      if (req.body.Condicao && !condicoesService.date(req.body.CondicaoInicio)) return res.status(400).json({ erro: 'Informe a data de início da condição.' });
 
       if (await cpfEmUso(req.body.CPF)) {
         return res.status(400).json({ erro: 'Já existe um funcionário com este CPF.' });
@@ -186,22 +193,26 @@ module.exports = {
       if (!empresa) return res.status(400).json({ erro: 'Empresa não encontrada.' });
 
       const perfil = await db.getPerfilBySetorCargo(req.body.SetorID, req.body.CargoID);
-      const created = await db.insert('Funcionarios', {
-        Nome: String(req.body.Nome).trim(),
-        CPF: formatCpf(req.body.CPF),
-        DataNascimento: req.body.DataNascimento,
-        ...dadosControleOcupacional(req.body, perfil?.PeriodicidadeVencimentoMeses || 12),
-        Situacao: String(req.body.Situacao).trim().toUpperCase(),
-        SetorID: req.body.SetorID,
-        CargoID: req.body.CargoID,
-        EmpresaID: req.body.EmpresaID
+      const controle = dadosControleOcupacional({ ...req.body, Condicao: '' }, perfil?.PeriodicidadeVencimentoMeses || 12);
+      const createdId = await condicoesService.transaction(async connection => {
+        const [result] = await connection.query(`INSERT INTO funcionarios
+          (codigo_funcionario,nome,cpf,data_nascimento,data_admissao,data_desligamento,ultimo_exame,vencimento,status,situacao,setor_id,cargo_id,empresa_id)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, [String(req.body.CodigoFuncionario || '').trim() || null,
+          String(req.body.Nome).trim(), onlyDigits(req.body.CPF), req.body.DataNascimento,
+          controle.DataAdmissao, String(req.body.Situacao).toUpperCase() === 'DESLIGADO' ? req.body.DataDesligamento : null,
+          controle.UltimoExame, controle.Vencimento, controle.Status, String(req.body.Situacao).trim().toUpperCase(),
+          req.body.SetorID, req.body.CargoID, req.body.EmpresaID
+        ]);
+        if (req.body.Condicao) await condicoesService.setCondition(connection, result.insertId, req.body.Condicao, req.body.CondicaoInicio, req.body.ObservacaoCondicao || null);
+        return result.insertId;
       });
+      const created = await db.getById('Funcionarios', createdId);
       await db.syncPerfilAtividade(created.SetorID, created.CargoID);
-      const [enriched] = await enrichWithNames([created]);
+      const [enriched] = await enrichWithNames([await db.getById('Funcionarios', created.ID)]);
       res.status(201).json(enriched);
     } catch (err) {
       console.error(err);
-      res.status(500).json({ erro: 'Falha ao criar funcionário.' });
+      res.status(err.code === 'ER_DUP_ENTRY' ? 409 : err.status || 500).json({ erro: err.code === 'ER_DUP_ENTRY' ? 'CPF ou código já cadastrado nesta empresa.' : err.status ? err.message : 'Falha ao criar funcionário.' });
     }
   },
 
@@ -209,6 +220,7 @@ module.exports = {
     try {
       const erro = validarPayload(req.body, true);
       if (erro) return res.status(400).json({ erro });
+      if (req.body.Condicao && String(req.body.Condicao).toUpperCase() !== String((await db.getById('Funcionarios', req.params.id))?.Condicao || '').toUpperCase() && !condicoesService.date(req.body.CondicaoInicio)) return res.status(400).json({ erro: 'Informe a data de início da nova condição.' });
 
       const existente = await db.getById('Funcionarios', req.params.id);
       if (!existente) return res.status(404).json({ erro: 'Funcionário não encontrado.' });
@@ -227,25 +239,24 @@ module.exports = {
       if (!empresa) return res.status(400).json({ erro: 'Empresa não encontrada.' });
 
       const perfil = await db.getPerfilBySetorCargo(req.body.SetorID, req.body.CargoID);
-      const updated = await db.update('Funcionarios', req.params.id, {
-        Nome: String(req.body.Nome).trim(),
-        CPF: formatCpf(req.body.CPF),
-        DataNascimento: req.body.DataNascimento,
-        ...dadosControleOcupacional(req.body, perfil?.PeriodicidadeVencimentoMeses || 12),
-        Situacao: String(req.body.Situacao).trim().toUpperCase(),
-        SetorID: req.body.SetorID,
-        CargoID: req.body.CargoID,
-        EmpresaID: req.body.EmpresaID
+      const controle = dadosControleOcupacional(req.body, perfil?.PeriodicidadeVencimentoMeses || 12);
+      await condicoesService.transaction(async connection => {
+        await connection.query(`UPDATE funcionarios SET codigo_funcionario=?,nome=?,cpf=?,data_nascimento=?,data_admissao=?,data_desligamento=?,ultimo_exame=?,vencimento=?,status=?,situacao=?,setor_id=?,cargo_id=?,empresa_id=? WHERE id=?`, [Object.hasOwn(req.body, 'CodigoFuncionario') ? String(req.body.CodigoFuncionario || '').trim() || null : existente.CodigoFuncionario || null, String(req.body.Nome).trim(), onlyDigits(req.body.CPF), req.body.DataNascimento, controle.DataAdmissao, String(req.body.Situacao).toUpperCase() === 'DESLIGADO' ? req.body.DataDesligamento : null, controle.UltimoExame, controle.Vencimento, controle.Status, String(req.body.Situacao).trim().toUpperCase(), req.body.SetorID, req.body.CargoID, req.body.EmpresaID, req.params.id]);
+        await condicoesService.setCondition(connection, req.params.id, req.body.Condicao, req.body.CondicaoInicio, req.body.ObservacaoCondicao || null, Boolean(req.body.CorrigirCondicao), req.body.CondicaoFim);
       });
+      const updated = await db.getById('Funcionarios', req.params.id);
       await Promise.all([
         db.syncPerfilAtividade(existente.SetorID, existente.CargoID),
         db.syncPerfilAtividade(updated.SetorID, updated.CargoID)
       ]);
+      if (toInputDate(existente.UltimoExame) !== toInputDate(req.body.UltimoExame)) {
+        await registrosService.sincronizarEdicaoFuncionario(updated.ID, req.body.UltimoExame);
+      }
       const [enriched] = await enrichWithNames([updated]);
       res.json(enriched);
     } catch (err) {
       console.error(err);
-      res.status(500).json({ erro: 'Falha ao atualizar funcionário.' });
+      res.status(err.code === 'ER_DUP_ENTRY' ? 409 : err.status || 500).json({ erro: err.code === 'ER_DUP_ENTRY' ? 'CPF ou código já cadastrado nesta empresa.' : err.status ? err.message : 'Falha ao atualizar funcionário.' });
     }
   },
 

@@ -2,24 +2,29 @@
 <%- include('partials/head', {pageTitle}) %>
 <%- include('partials/nav', {pageTitle, active: 'exames-complementares'}) %>
 
-<div class="mb-stack-lg">
-  <div class="flex flex-wrap items-end justify-between gap-4">
+<div class="mb-5">
+  <div class="approved-page-header">
     <div>
-      <h3 class="font-headline-lg text-headline-lg text-on-surface">Exames</h3>
-      <p class="text-on-surface-variant font-body-md text-body-md mt-1">Administre os tipos de exames utilizados na emissão do ASO e os exames complementares vinculados aos cargos.</p>
+      <h3 class="approved-page-title">Organize os exames ocupacionais</h3>
+      <p class="approved-page-subtitle">Catálogo de exames utilizados nos perfis e ASOs.</p>
     </div>
-    <button id="botao-adicionar-tipo" onclick="abrirModalTipo()" class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"><span class="material-symbols-outlined">add</span> Adicionar Tipo</button>
-    <button id="botao-adicionar-complementar" onclick="abrirModal()" class="hidden bg-primary text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm"><span class="material-symbols-outlined">add</span> Adicionar Exame</button>
+    <div class="approved-header-actions">
+      <a class="approved-button" href="<%= baseUrl('api/importacoes/cadastros/exames/modelo') %>" download><span data-ui-icon="download"></span>Baixar modelo</a>
+      <button class="approved-button" type="button" onclick="document.getElementById('arquivo-exames').click()"><span data-ui-icon="upload"></span>Importar planilha</button>
+      <button id="botao-adicionar-tipo" onclick="abrirModalTipo()" class="approved-button primary"><span class="material-symbols-outlined">add</span>Novo tipo</button>
+      <button id="botao-adicionar-complementar" onclick="abrirModal()" class="hidden approved-button primary"><span class="material-symbols-outlined">add</span>Novo exame</button>
+      <input id="arquivo-exames" class="approved-import-input" type="file" accept=".xlsx">
+    </div>
   </div>
-  <div class="inline-flex flex-wrap mt-5 bg-surface-container p-1 rounded-xl border border-border-subtle gap-1">
-    <button onclick="mostrarAbaExames('tipos')" data-aba="tipos" class="aba-exames px-4 py-2 bg-surface text-primary font-bold rounded-lg shadow-sm text-body-md">Tipos de Exames</button>
-    <button onclick="mostrarAbaExames('complementares')" data-aba="complementares" class="aba-exames px-4 py-2 text-on-surface-variant font-semibold rounded-lg text-body-md">Exames Complementares</button>
+  <div class="modern-tabs mt-5">
+    <button onclick="mostrarAbaExames('tipos')" data-aba="tipos" class="aba-exames modern-tab active">Tipos de Exames</button>
+    <button onclick="mostrarAbaExames('complementares')" data-aba="complementares" class="aba-exames modern-tab">Exames Complementares</button>
   </div>
 </div>
+<div class="approved-search mb-3"><span data-ui-icon="search"></span><input id="busca-exames" class="approved-input" placeholder="Buscar exame, tipo ou descrição"></div>
 
 <section id="painel-complementares" class="painel-exames hidden space-y-2">
-  <div id="paginacao-exames"></div>
-  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+  <div class="approved-data-card">
   <table class="w-full text-left border-collapse">
     <thead class="bg-background-main border-b border-border-subtle">
       <tr>
@@ -33,13 +38,14 @@
       <tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Carregando...</td></tr>
     </tbody>
   </table>
+  <div id="paginacao-exames" class="px-4"></div>
   </div>
 </section>
 
 <section id="painel-tipos" class="painel-exames space-y-2">
-  <div id="paginacao-tipos"></div>
-  <div class="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+  <div class="approved-data-card">
     <table class="w-full text-left"><thead class="bg-background-main border-b border-border-subtle"><tr><th class="px-6 py-4 text-label-caps uppercase">Ordem</th><th class="px-6 py-4 text-label-caps uppercase">Chave</th><th class="px-6 py-4 text-label-caps uppercase">Nome</th><th class="px-6 py-4 text-right text-label-caps uppercase">Ações</th></tr></thead><tbody id="tbody-tipos" class="font-table-data text-table-data"></tbody></table>
+    <div id="paginacao-tipos" class="px-4"></div>
   </div>
 </section>
 
@@ -80,11 +86,12 @@
 <script>
 let paginaExames = 1;
 let paginaTipos = 1;
-const ITENS_POR_PAGINA = 5;
+let buscaExames = '';
+const ITENS_POR_PAGINA = 6;
 function mostrarAbaExames(aba) {
   document.querySelectorAll('.painel-exames').forEach(p => p.classList.toggle('hidden', p.id !== `painel-${aba}`));
   document.querySelectorAll('.aba-exames').forEach(b => {
-    b.className = `aba-exames px-4 py-2 rounded-lg text-body-md ${b.dataset.aba === aba ? 'bg-surface text-primary font-bold shadow-sm' : 'text-on-surface-variant font-semibold'}`;
+    b.className = `aba-exames modern-tab${b.dataset.aba === aba ? ' active' : ''}`;
   });
   document.getElementById('botao-adicionar-tipo').classList.toggle('hidden', aba !== 'tipos');
   document.getElementById('botao-adicionar-complementar').classList.toggle('hidden', aba !== 'complementares');
@@ -92,7 +99,7 @@ function mostrarAbaExames(aba) {
 async function carregarExames() {
   const tbody = document.getElementById('tbody-exames');
   try {
-    const exames = await api('exames-complementares');
+    const exames = (await api('exames-complementares')).filter(item=>`${item.Nome||''}`.toLocaleLowerCase('pt-BR').includes(buscaExames));
     if (!exames.length) {
       tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Nenhum exame complementar cadastrado.</td></tr>';
       return;
@@ -157,7 +164,7 @@ document.getElementById('form-exame').addEventListener('submit', async (e) => {
 });
 
 async function excluir(id) {
-  if (!confirmarExclusao('Excluir este exame complementar? Remova antes os vínculos com cargos.')) return;
+  if (!await confirmarExclusao('Excluir este exame complementar? Remova antes os vínculos com cargos.')) return;
   try {
     await api(`exames-complementares/${id}`, { method: 'DELETE' });
     toast('Exame complementar excluído.');
@@ -170,7 +177,7 @@ async function excluir(id) {
 async function carregarTipos() {
   const tbody = document.getElementById('tbody-tipos');
   try {
-    const tipos = await api('tipos-exame');
+    const tipos = (await api('tipos-exame')).filter(item=>`${item.Nome||''} ${item.Chave||''}`.toLocaleLowerCase('pt-BR').includes(buscaExames));
     if (!tipos.length) {
       tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-on-surface-variant">Nenhum tipo cadastrado.</td></tr>';
       document.getElementById('paginacao-tipos').innerHTML = '';
@@ -220,7 +227,7 @@ document.getElementById('form-tipo').addEventListener('submit', async e => {
   }
 });
 async function excluirTipo(id) {
-  if (!confirmarExclusao('Excluir este tipo de exame?')) return;
+  if (!await confirmarExclusao('Excluir este tipo de exame?')) return;
   try {
     await api(`tipos-exame/${id}`, { method: 'DELETE' });
     carregarTipos();
@@ -229,6 +236,9 @@ async function excluirTipo(id) {
     toast(err.message, 'erro');
   }
 }
+
+document.getElementById('busca-exames').addEventListener('input',e=>{buscaExames=e.target.value.toLocaleLowerCase('pt-BR').trim();paginaExames=1;paginaTipos=1;Promise.all([carregarExames(),carregarTipos()]).catch(error=>toast(error.message,'erro'))});
+document.getElementById('arquivo-exames').addEventListener('change',async e=>{const arquivo=e.target.files[0];if(!arquivo)return;try{const resposta=await fetch(apiUrl('importacoes/cadastros/exames'),{method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:await arquivo.arrayBuffer()});const dados=await resposta.json();if(!resposta.ok)throw new Error(dados.erro||'Falha ao importar.');toast(`${dados.importados} exame(s) importado(s).${dados.ignorados?` ${dados.ignorados} já existente(s).`:''}`);await carregarExames()}catch(error){toast(error.message,'erro')}finally{e.target.value=''}});
 
 Promise.all([carregarExames(), carregarTipos()]).catch(err => toast(err.message, 'erro'));
 </script>

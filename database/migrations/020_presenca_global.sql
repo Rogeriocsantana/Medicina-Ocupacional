@@ -1,0 +1,3 @@
+ALTER TABLE presencas_medicas
+  MODIFY COLUMN empresa_id BIGINT UNSIGNED NULL,
+  MODIFY COLUMN medico VARCHAR(180) NULL;
